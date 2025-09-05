@@ -1,0 +1,18 @@
+{
+  "name": "Meine GmbH",
+  "address_line1": "Im alten Holz 133",
+  "address_line2": "",
+  "postal_code": "58093",
+  "city": "Hagen",
+  "country": "Deutschland",
+  "phone": "",
+  "email": "",
+  "website": "",
+  "tax_number": "312231234",
+  "vat_id": "",
+  "iban": "DE1239441238941723u8",
+  "bic": "SPBASFKOAF",
+  "bank_name": "Sparkass eBielefeld",
+  "logo_path": "",
+  "is_small_business": true
+}

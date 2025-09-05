@@ -1,0 +1,98 @@
+[
+  {
+    "id": "6a95dc83-3d34-4309-b2b5-32213d7350fd",
+    "document_type": "Rechnung",
+    "invoice_number": "123",
+    "invoice_date": "2025-09-05T00:00:00",
+    "service_date": "2025-09-05T00:00:00",
+    "customer": {
+      "id": "fbbd9176-bc93-4bd8-80c7-b573c6f21a85",
+      "company_name": "Test GmbH",
+      "contact_person": "Max Mustermann",
+      "address_line1": "Musterstraße 123",
+      "address_line2": "",
+      "postal_code": "12345",
+      "city": "Musterstadt",
+      "country": "Deutschland",
+      "phone": "0123456789",
+      "email": "test@example.com",
+      "vat_id": "",
+      "customer_number": "K0001",
+      "delivery_company": "",
+      "delivery_address_line1": "",
+      "delivery_address_line2": "",
+      "delivery_postal_code": "",
+      "delivery_city": "",
+      "delivery_country": "Deutschland"
+    },
+    "positions": [
+      {
+        "position_number": 1,
+        "description": "blowjob",
+        "quantity": "1.00",
+        "unit": "h",
+        "unit_price": "90",
+        "discount_percent": "0.0",
+        "tax_rate": "0.00"
+      }
+    ],
+    "payment_terms_days": 14,
+    "discount_days": 0,
+    "discount_percent": "0.00",
+    "header_text": "",
+    "footer_text": "",
+    "payment_info_text": "",
+    "is_paid": true,
+    "payment_date": null,
+    "reference_invoice_id": "",
+    "offer_number": ""
+  },
+  {
+    "id": "c53173f1-fb7f-4bd1-a1b4-c110c29e3c09",
+    "document_type": "Gutschrift",
+    "invoice_number": "12",
+    "invoice_date": "2025-09-05T00:00:00",
+    "service_date": "2025-09-05T00:00:00",
+    "customer": {
+      "id": "fbbd9176-bc93-4bd8-80c7-b573c6f21a85",
+      "company_name": "Test GmbH",
+      "contact_person": "Max Mustermann",
+      "address_line1": "Musterstraße 123",
+      "address_line2": "",
+      "postal_code": "12345",
+      "city": "Musterstadt",
+      "country": "Deutschland",
+      "phone": "0123456789",
+      "email": "test@example.com",
+      "vat_id": "",
+      "customer_number": "K0001",
+      "delivery_company": "",
+      "delivery_address_line1": "",
+      "delivery_address_line2": "",
+      "delivery_postal_code": "",
+      "delivery_city": "",
+      "delivery_country": "Deutschland"
+    },
+    "positions": [
+      {
+        "position_number": 1,
+        "description": "test",
+        "quantity": "1.00",
+        "unit": "Stk.",
+        "unit_price": "10",
+        "discount_percent": "0.0",
+        "tax_rate": "0.19"
+      }
+    ],
+    "payment_terms_days": 14,
+    "discount_days": 0,
+    "discount_percent": "0.00",
+    "header_text": "",
+    "footer_text": "",
+    "payment_info_text": "",
+    "is_paid": false,
+    "payment_date": null,
+    "reference_invoice_id": "",
+    "offer_number": ""
+  }
+]
