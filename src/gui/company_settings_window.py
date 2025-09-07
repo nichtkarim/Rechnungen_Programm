@@ -8,6 +8,8 @@ from typing import Optional
 import os
 
 from src.models import CompanyData
+from src.utils.data_manager import DataManager
+from src.utils.theme_manager import theme_manager
 
 
 class CompanySettingsWindow:
@@ -28,6 +30,9 @@ class CompanySettingsWindow:
         self.window.transient(parent)
         self.window.grab_set()
         
+        # Theme anwenden
+        theme_manager.setup_window_theme(self.window)
+        
         # GUI erstellen
         self.setup_gui()
         self.load_data()
@@ -37,21 +42,16 @@ class CompanySettingsWindow:
     
     def setup_gui(self):
         """Erstellt die GUI-Elemente"""
-        self.window.columnconfigure(1, weight=1)
+        # Main container mit Grid-Layout
+        self.main_frame = ctk.CTkFrame(self.window)
+        self.main_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
-        # Scrollable Frame
-        canvas = tk.Canvas(self.window)
-        scrollbar = tk.Scrollbar(self.window, orient="vertical", command=canvas.yview)
-        self.scrollable_frame = ctk.CTkFrame(canvas)
+        # Scrollable Frame für Inhalte
+        self.scrollable_frame = ctk.CTkScrollableFrame(self.main_frame)
+        self.scrollable_frame.pack(fill="both", expand=True)
         
-        canvas.configure(yscrollcommand=scrollbar.set)
-        canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
-        
-        canvas.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
-        scrollbar.grid(row=0, column=1, sticky="ns")
-        
-        self.window.rowconfigure(0, weight=1)
-        self.window.columnconfigure(0, weight=1)
+        # Grid-Konfiguration
+        self.scrollable_frame.columnconfigure(1, weight=1)
         
         # Grunddaten
         self.create_basic_section()
@@ -73,10 +73,6 @@ class CompanySettingsWindow:
         
         # Buttons
         self.create_buttons()
-        
-        # Frame-Größe aktualisieren
-        self.scrollable_frame.update_idletasks()
-        canvas.configure(scrollregion=canvas.bbox("all"))
     
     def create_basic_section(self):
         """Erstellt den Grunddaten-Bereich"""
@@ -406,8 +402,8 @@ class CompanySettingsWindow:
     
     def create_buttons(self):
         """Erstellt die Buttons"""
-        button_frame = ctk.CTkFrame(self.window)
-        button_frame.grid(row=1, column=0, columnspan=2, sticky="ew", padx=10, pady=10)
+        button_frame = ctk.CTkFrame(self.main_frame)
+        button_frame.pack(side="bottom", fill="x", padx=10, pady=(0, 10))
         
         # Buttons rechtsbündig
         buttons_right = ctk.CTkFrame(button_frame)

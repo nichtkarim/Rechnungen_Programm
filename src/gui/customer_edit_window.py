@@ -8,6 +8,7 @@ from typing import Optional
 
 from src.models import Customer
 from src.utils.data_manager import DataManager
+from src.utils.theme_manager import theme_manager
 
 
 class CustomerEditWindow:
@@ -28,6 +29,9 @@ class CustomerEditWindow:
         self.window.geometry("800x900")
         self.window.transient(parent)
         self.window.grab_set()
+        
+        # Theme anwenden
+        theme_manager.setup_window_theme(self.window)
         
         # Erscheinungsbild setzen
         self.window.configure(fg_color=("gray95", "gray10"))  # Hell/Dunkel-Theme

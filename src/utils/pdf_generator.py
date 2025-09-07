@@ -3,11 +3,13 @@ PDF-Export für Rechnungen
 Erstellt professionelle PDF-Dokumente im DIN A4 Format
 """
 import os
+import io
 from pathlib import Path
 from decimal import Decimal
 from datetime import datetime
 from typing import Optional, Dict, List
 
+import qrcode
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.colors import HexColor, black, grey
@@ -25,9 +27,10 @@ from src.models import Invoice, CompanyData, DocumentType, TaxRate
 class InvoicePDFGenerator:
     """PDF-Generator für Rechnungen"""
     
-    def __init__(self, company_data: CompanyData, pdf_color: str = "#2E86AB"):
+    def __init__(self, company_data: CompanyData, pdf_color: str = "#2E86AB", enable_qr_code: bool = True):
         self.company_data = company_data
         self.pdf_color = HexColor(pdf_color)
+        self.enable_qr_code = enable_qr_code
         self.page_width, self.page_height = A4
         
         # Seitenränder
@@ -99,6 +102,82 @@ class InvoicePDFGenerator:
             textColor=grey,
             alignment=TA_CENTER
         ))
+    
+    def _generate_girocode_qr(self, invoice: Invoice) -> Optional[Image]:
+        """
+        Generiert einen GiroCode QR-Code für die Rechnung
+        Der QR-Code enthält alle Bankdaten für das Mobile Banking
+        """
+        if (not self.enable_qr_code or 
+            not self.company_data.iban or 
+            invoice.document_type != DocumentType.RECHNUNG):
+            return None
+        
+        try:
+            # GiroCode Format nach EPC-Standard
+            # Format: [Service Tag][Version][Character set][Identification][BIC][Beneficiary Name][Beneficiary Account][Amount][Purpose][Remittance Reference][Remittance Text]
+            
+            amount = invoice.calculate_total_gross()
+            
+            # IBAN normalisieren (Leerzeichen entfernen, Großbuchstaben)
+            clean_iban = self.company_data.iban.replace(" ", "").upper()
+            
+            # BIC normalisieren
+            clean_bic = (self.company_data.bic or "").replace(" ", "").upper()
+            
+            # Name auf max. 70 Zeichen begrenzen
+            beneficiary_name = self.company_data.name[:70]
+            
+            # Verwendungszweck erstellen
+            reference = invoice.invoice_number[:35]  # Max 35 Zeichen
+            remittance_info = f"Rechnung {invoice.invoice_number}"[:140]  # Max 140 Zeichen
+            
+            # GiroCode-Datenstring zusammenstellen
+            girocode_data = [
+                "BCD",  # Service Tag
+                "002",  # Version (002 = aktueller Standard)
+                "1",    # Character set (1 = UTF-8)
+                "SCT",  # Identification (SCT = SEPA Credit Transfer)
+                clean_bic,  # BIC (kann leer sein für deutsche IBANs)
+                beneficiary_name,  # Empfängername
+                clean_iban,  # IBAN
+                f"EUR{amount:.2f}",  # Betrag in EUR mit 2 Dezimalstellen
+                "",     # Purpose (leer für normale Überweisungen)
+                reference,  # Structured reference (Rechnungsnummer)
+                remittance_info  # Unstructured remittance information
+            ]
+            
+            # QR-Code-String mit Zeilentrennung erstellen
+            qr_string = "\n".join(girocode_data)
+            
+            # QR-Code mit optimalen Einstellungen generieren
+            qr = qrcode.QRCode(
+                version=1,  # Automatische Größenanpassung
+                error_correction=qrcode.ERROR_CORRECT_M,  # Mittlere Fehlerkorrektur
+                box_size=4,  # Größere Boxen für bessere Lesbarkeit
+                border=2,    # Etwas größerer Rand
+            )
+            qr.add_data(qr_string)
+            qr.make(fit=True)
+            
+            # QR-Code als PIL Image erstellen
+            qr_image = qr.make_image(fill_color="black", back_color="white")
+            
+            # PIL Image in BytesIO umwandeln für ReportLab
+            img_buffer = io.BytesIO()
+            qr_image.save(img_buffer, 'PNG')
+            img_buffer.seek(0)
+            
+            # ReportLab Image erstellen mit fester Größe
+            qr_reportlab_image = Image(img_buffer)
+            qr_reportlab_image.drawHeight = 2.5 * cm  # Etwas kleiner für bessere Balance
+            qr_reportlab_image.drawWidth = 2.5 * cm
+            
+            return qr_reportlab_image
+            
+        except Exception as e:
+            print(f"Fehler beim Generieren des QR-Codes: {e}")
+            return None
     
     def generate_pdf(self, invoice: Invoice, output_path: str) -> bool:
         """Generiert das PDF-Dokument"""
@@ -466,7 +545,7 @@ class InvoicePDFGenerator:
         return elements
     
     def _build_payment_info(self, invoice: Invoice) -> List:
-        """Erstellt die Zahlungsinformationen"""
+        """Erstellt die Zahlungsinformationen mit QR-Code"""
         elements = []
         
         if invoice.document_type != DocumentType.RECHNUNG:
@@ -478,16 +557,54 @@ class InvoicePDFGenerator:
             elements.append(Paragraph(payment_text, self.styles['Normal']))
             elements.append(Spacer(1, 12))
         
-        # Bankdaten
+        # QR-Code und Bankdaten in einer Tabelle nebeneinander
+        qr_code = self._generate_girocode_qr(invoice)
+        
         if self.company_data.iban:
-            bank_info = "Bankverbindung:<br/>"
+            # Bankdaten-Text
+            bank_info = "<b>Bankverbindung:</b><br/>"
             if self.company_data.bank_name:
                 bank_info += f"Bank: {self.company_data.bank_name}<br/>"
             bank_info += f"IBAN: {self.company_data.iban}<br/>"
             if self.company_data.bic:
                 bank_info += f"BIC: {self.company_data.bic}<br/>"
             
-            elements.append(Paragraph(bank_info, self.styles['Normal']))
+            bank_paragraph = Paragraph(bank_info, self.styles['Normal'])
+            
+            if qr_code:
+                # QR-Code-Beschreibung
+                qr_description = Paragraph(
+                    "<b>QR-Code scannen für Überweisung:</b><br/>"
+                    "Mit Ihrer Banking-App scannen für<br/>"
+                    "automatische Überweisung mit allen<br/>"
+                    "Daten (Betrag, IBAN, Verwendungszweck)",
+                    self.styles['SmallText']
+                )
+                
+                # Tabelle mit Bankdaten und QR-Code
+                payment_data = [
+                    [bank_paragraph, qr_code],
+                    ["", qr_description]
+                ]
+                
+                payment_table = Table(payment_data, colWidths=[9*cm, 3.5*cm])
+                payment_table.setStyle(TableStyle([
+                    ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                    ('ALIGN', (1, 0), (1, -1), 'CENTER'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                    ('TOPPADDING', (0, 0), (-1, -1), 0),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+                    # Dünner Rahmen um QR-Code-Bereich
+                    ('BOX', (1, 0), (1, 1), 0.5, colors.lightgrey),
+                    ('BACKGROUND', (1, 0), (1, 1), colors.whitesmoke),
+                ]))
+                
+                elements.append(payment_table)
+            else:
+                # Nur Bankdaten ohne QR-Code
+                elements.append(bank_paragraph)
+            
             elements.append(Spacer(1, 12))
         
         return elements

@@ -7,6 +7,7 @@ from tkinter import messagebox, colorchooser
 from typing import Optional
 
 from src.models import AppSettings
+from src.utils.theme_manager import theme_manager
 
 
 class AppSettingsWindow:
@@ -27,6 +28,9 @@ class AppSettingsWindow:
         self.window.transient(parent)
         self.window.grab_set()
         
+        # Theme anwenden
+        theme_manager.setup_window_theme(self.window)
+        
         # GUI erstellen
         self.setup_gui()
         self.load_data()
@@ -36,21 +40,16 @@ class AppSettingsWindow:
     
     def setup_gui(self):
         """Erstellt die GUI-Elemente"""
-        self.window.columnconfigure(1, weight=1)
+        # Main container mit Pack-Layout
+        self.main_frame = ctk.CTkFrame(self.window)
+        self.main_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
-        # Scrollable Frame
-        canvas = tk.Canvas(self.window)
-        scrollbar = tk.Scrollbar(self.window, orient="vertical", command=canvas.yview)
-        self.scrollable_frame = ctk.CTkFrame(canvas)
+        # Scrollable Frame für Inhalte
+        self.scrollable_frame = ctk.CTkScrollableFrame(self.main_frame)
+        self.scrollable_frame.pack(fill="both", expand=True)
         
-        canvas.configure(yscrollcommand=scrollbar.set)
-        canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
-        
-        canvas.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
-        scrollbar.grid(row=0, column=1, sticky="ns")
-        
-        self.window.rowconfigure(0, weight=1)
-        self.window.columnconfigure(0, weight=1)
+        # Grid-Konfiguration
+        self.scrollable_frame.columnconfigure(1, weight=1)
         
         # UI-Einstellungen
         self.create_ui_section()
@@ -66,10 +65,6 @@ class AppSettingsWindow:
         
         # Buttons
         self.create_buttons()
-        
-        # Frame-Größe aktualisieren
-        self.scrollable_frame.update_idletasks()
-        canvas.configure(scrollregion=canvas.bbox("all"))
     
     def create_ui_section(self):
         """Erstellt den UI-Einstellungen-Bereich"""
@@ -95,7 +90,8 @@ class AppSettingsWindow:
             self.scrollable_frame,
             values=["light", "dark", "system"],
             variable=self.theme_mode_var,
-            width=150
+            width=150,
+            command=self.on_theme_change  # Live-Preview hinzufügen
         )
         theme_combo.grid(row=row, column=1, sticky="w", padx=10, pady=5)
         
@@ -383,12 +379,36 @@ class AppSettingsWindow:
         )
         font_size_combo.grid(row=row, column=1, sticky="w", padx=10, pady=5)
         
-        self.pdf_row_end = row
+        row += 1
+        
+        # QR-Code für Banking
+        ctk.CTkLabel(self.scrollable_frame, text="QR-Code für Banking:").grid(
+            row=row, column=0, sticky="w", padx=10, pady=5
+        )
+        
+        self.enable_qr_codes_var = ctk.BooleanVar(value=self.settings.enable_qr_codes)
+        qr_code_checkbox = ctk.CTkCheckBox(
+            self.scrollable_frame,
+            text="QR-Code in Rechnungen einfügen",
+            variable=self.enable_qr_codes_var
+        )
+        qr_code_checkbox.grid(row=row, column=1, sticky="w", padx=10, pady=5)
+        
+        # Hilfstext für QR-Code
+        help_text = ctk.CTkLabel(
+            self.scrollable_frame,
+            text="(Ermöglicht Banking-Apps das automatische Scannen der Überweisungsdaten)",
+            font=("Arial", 9),
+            text_color="gray"
+        )
+        help_text.grid(row=row+1, column=1, sticky="w", padx=10, pady=(0, 5))
+        
+        self.pdf_row_end = row + 1
     
     def create_buttons(self):
         """Erstellt die Buttons"""
-        button_frame = ctk.CTkFrame(self.window)
-        button_frame.grid(row=1, column=0, columnspan=2, sticky="ew", padx=10, pady=10)
+        button_frame = ctk.CTkFrame(self.main_frame)
+        button_frame.pack(side="bottom", fill="x", padx=10, pady=(0, 10))
         
         # Buttons linksbündig
         buttons_left = ctk.CTkFrame(button_frame)
@@ -498,6 +518,7 @@ class AppSettingsWindow:
             # PDF-Einstellungen
             self.settings.pdf_company_color = self.pdf_company_color_var.get().strip()
             self.settings.pdf_font_size = int(self.pdf_font_size_var.get())
+            self.settings.enable_qr_codes = self.enable_qr_codes_var.get()
             
             # Validierung
             if self.settings.window_width < 800 or self.settings.window_height < 600:
@@ -557,3 +578,13 @@ class AppSettingsWindow:
         x = (self.window.winfo_screenwidth() // 2) - (self.window.winfo_width() // 2)
         y = (self.window.winfo_screenheight() // 2) - (self.window.winfo_height() // 2)
         self.window.geometry(f"+{x}+{y}")
+    
+    def on_theme_change(self, value):
+        """Live-Preview beim Ändern des Themes"""
+        try:
+            # Theme sofort anwenden für Preview
+            theme_manager.apply_theme(value, "blue")
+            theme_manager.setup_window_theme(self.window)
+            print(f"✅ Theme Preview: {value}")
+        except Exception as e:
+            print(f"❌ Fehler beim Theme-Preview: {e}")

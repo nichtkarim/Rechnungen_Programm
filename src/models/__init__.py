@@ -22,6 +22,15 @@ class TaxRate(Enum):
     STANDARD = Decimal("0.19")
 
 
+class PaymentStatus(Enum):
+    """Zahlungsstatus"""
+    OFFEN = "Offen"
+    BEZAHLT = "Bezahlt"
+    TEILWEISE_BEZAHLT = "Teilweise bezahlt"
+    UEBERFAELLIG = "Überfällig"
+    STORNIERT = "Storniert"
+
+
 @dataclass
 class CompanyData:
     """Stammdaten des Unternehmens"""
@@ -172,6 +181,7 @@ class Invoice:
     # Status
     is_paid: bool = False
     payment_date: Optional[datetime] = None
+    payment_status: PaymentStatus = PaymentStatus.OFFEN
     
     # Referenzen
     reference_invoice_id: str = ""  # Für Gutschriften/Stornos
@@ -220,6 +230,27 @@ class Invoice:
             return f"Zahlbar innerhalb von {self.payment_terms_days} Tagen bis zum {due_date.strftime('%d.%m.%Y')} ohne Abzug."
         return ""
     
+    def update_payment_status(self):
+        """Aktualisiert den Zahlungsstatus basierend auf anderen Attributen"""
+        if self.is_paid and self.payment_date:
+            self.payment_status = PaymentStatus.BEZAHLT
+        elif self.document_type == DocumentType.STORNO:
+            self.payment_status = PaymentStatus.STORNIERT
+        elif self.invoice_date and self.payment_terms_days:
+            # Prüfe ob überfällig
+            from datetime import timedelta
+            due_date = self.invoice_date + timedelta(days=self.payment_terms_days)
+            if datetime.now() > due_date:
+                self.payment_status = PaymentStatus.UEBERFAELLIG
+            else:
+                self.payment_status = PaymentStatus.OFFEN
+        else:
+            self.payment_status = PaymentStatus.OFFEN
+    
+    def get_payment_status_display(self) -> str:
+        """Gibt den Zahlungsstatus als String zurück (für Kompatibilität)"""
+        return self.payment_status.value
+    
     def to_dict(self) -> Dict[str, Any]:
         data = asdict(self)
         
@@ -233,6 +264,9 @@ class Invoice:
         
         # Konvertiere DocumentType zu String
         data['document_type'] = self.document_type.value
+        
+        # Konvertiere PaymentStatus zu String
+        data['payment_status'] = self.payment_status.value
         
         # Konvertiere Decimal zu String
         decimal_fields = ['discount_percent']
@@ -263,6 +297,13 @@ class Invoice:
             for doc_type in DocumentType:
                 if doc_type.value == data['document_type']:
                     data['document_type'] = doc_type
+                    break
+        
+        # Konvertiere PaymentStatus
+        if 'payment_status' in data:
+            for status in PaymentStatus:
+                if status.value == data['payment_status']:
+                    data['payment_status'] = status
                     break
         
         # Konvertiere Decimal
@@ -310,6 +351,7 @@ class AppSettings:
     # PDF-Einstellungen
     pdf_company_color: str = "#2E86AB"  # Hex-Farbcode für CI
     pdf_font_size: int = 10
+    enable_qr_codes: bool = True  # QR-Codes für Banking in PDFs
     
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)

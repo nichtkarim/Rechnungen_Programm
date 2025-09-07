@@ -1,7 +1,7 @@
 {
   "theme_mode": "system",
-  "window_width": 1200,
-  "window_height": 760,
+  "window_width": 1699,
+  "window_height": 762,
   "invoice_number_format": "R{year}-{counter:04d}",
   "offer_number_format": "A{year}-{counter:04d}",
   "credit_note_format": "G{year}-{counter:04d}",
@@ -13,5 +13,6 @@
   "default_tax_rate": "0.19",
   "default_currency": "EUR",
   "pdf_company_color": "#2E86AB",
-  "pdf_font_size": 10
+  "pdf_font_size": 10,
+  "enable_qr_codes": true
 }

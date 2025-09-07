@@ -3,9 +3,15 @@ Hauptstartdatei für das Rechnungs-Tool
 """
 import sys
 import os
+from pathlib import Path
 
-# Pfad zum src-Verzeichnis hinzufügen
-sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
+# Absoluten Pfad zum Projektverzeichnis ermitteln
+project_root = Path(__file__).parent.absolute()
+src_path = project_root / "src"
+
+# Nur hinzufügen wenn nicht bereits vorhanden
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
 
 from src.gui.main_window import MainWindow
 

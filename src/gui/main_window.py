@@ -13,31 +13,53 @@ from src.models import DocumentType, Invoice, Customer, CompanyData
 from src.utils.data_manager import DataManager
 from src.utils.pdf_generator import InvoicePDFGenerator
 
-# GUI-Module importieren (werden später erstellt)
+# GUI-Module importieren
 from src.gui.invoice_edit_window import InvoiceEditWindow
 from src.gui.customer_edit_window import CustomerEditWindow
 from src.gui.company_settings_window import CompanySettingsWindow
 from src.gui.app_settings_window import AppSettingsWindow
+from src.gui.email_settings_window import EmailSettingsWindow
+from src.gui.security_window import SecuritySettingsWindow
+from src.gui.compliance_window import ComplianceWindow
+from src.gui.dashboard_window import DashboardWindow
+
+# Erweiterte Manager
+from src.utils.security_manager import SecurityManager
+from src.utils.compliance_manager import ComplianceManager
+from src.utils.email_manager import EmailManager
+from src.utils.import_export_manager import DataExporter, DataImporter
+from src.utils.theme_manager import theme_manager
 
 
 class MainWindow:
     """Hauptfenster der Anwendung"""
     
     def __init__(self):
-        # Datenmanager initialisieren
+        # Manager initialisieren
         self.data_manager = DataManager()
+        self.security_manager = SecurityManager()
+        self.compliance_manager = ComplianceManager()
+        self.email_manager = EmailManager(self.data_manager)
+        self.data_exporter = DataExporter(self.data_manager)
+        self.data_importer = DataImporter(self.data_manager)
+        
+        # Theme-Manager initialisieren
+        theme_manager.set_data_manager(self.data_manager)
+        
+        # Dashboard-Fenster Referenz
+        self.dashboard_window = None
         
         # Hauptfenster erstellen
         self.root = ctk.CTk()
-        self.root.title("Rechnungs-Tool")
+        self.root.title("Rechnungs-Tool - Enterprise Edition")
         
         # Fenstereinstellungen
         settings = self.data_manager.get_settings()
         self.root.geometry(f"{settings.window_width}x{settings.window_height}")
         
-        # Theme setzen
-        ctk.set_appearance_mode(settings.theme_mode)
-        ctk.set_default_color_theme("blue")
+        # Theme über Theme-Manager setzen
+        theme_manager.apply_theme("dark", "blue")  # Erzwinge dark theme
+        theme_manager.setup_window_theme(self.root)
         
         # GUI erstellen
         self.setup_gui()
@@ -82,14 +104,38 @@ class MainWindow:
         file_menu.add_command(label="📤 Daten exportieren", command=self.export_all_data)
         file_menu.add_command(label="📥 Daten importieren", command=self.import_all_data)
         file_menu.add_separator()
+        # Erweiterte Import/Export-Untermenü
+        import_export_menu = tk.Menu(file_menu, tearoff=0)
+        file_menu.add_cascade(label="📊 Erweiterte Im-/Exporte", menu=import_export_menu)
+        import_export_menu.add_command(label="📄 Kunden → CSV", command=lambda: self.advanced_export("customers", "csv"))
+        import_export_menu.add_command(label="📊 Kunden → Excel", command=lambda: self.advanced_export("customers", "excel"))
+        import_export_menu.add_command(label="📋 Kunden → XML", command=lambda: self.advanced_export("customers", "xml"))
+        import_export_menu.add_separator()
+        import_export_menu.add_command(label="🧾 Rechnungen → CSV", command=lambda: self.advanced_export("invoices", "csv"))
+        import_export_menu.add_command(label="📊 Rechnungen → Excel", command=lambda: self.advanced_export("invoices", "excel"))
+        import_export_menu.add_command(label="🏢 Rechnungen → DATEV", command=lambda: self.advanced_export("invoices", "datev"))
+        import_export_menu.add_command(label="📈 Rechnungen → Lexware", command=lambda: self.advanced_export("invoices", "lexware"))
+        import_export_menu.add_separator()
+        import_export_menu.add_command(label="📥 CSV importieren", command=lambda: self.advanced_import("csv"))
+        import_export_menu.add_command(label="📥 Excel importieren", command=lambda: self.advanced_import("excel"))
+        file_menu.add_separator()
         file_menu.add_command(label="❌ Beenden", command=self.root.quit)
         
         # Extras Menu
         extras_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="Extras", menu=extras_menu)
         extras_menu.add_command(label="📊 Dashboard", command=self.show_dashboard)
-        extras_menu.add_command(label="✅ Datenvalidierung", command=self.run_data_validation)
+        extras_menu.add_separator()
         extras_menu.add_command(label="📋 Massen-Export", command=self.bulk_export)
+        extras_menu.add_command(label="📄 Erweiterte PDF-Exports", command=self.show_advanced_pdf_exports)
+        extras_menu.add_separator()
+        extras_menu.add_command(label="🔍 Datenvalidierung", command=self.run_data_validation)
+        extras_menu.add_command(label="📊 E-Mail-Statistiken", command=self.show_email_statistics)
+        extras_menu.add_command(label="⚡ Automatische Erinnerungen", command=self.manage_automatic_reminders)
+        extras_menu.add_separator()
+        extras_menu.add_command(label="📧 E-Mail-Einstellungen", command=self.show_email_settings)
+        extras_menu.add_command(label="🔐 Sicherheit", command=self.show_security_settings)
+        extras_menu.add_command(label="📋 Compliance", command=self.show_compliance_management)
         extras_menu.add_separator()
         extras_menu.add_command(label="🔧 Einstellungen", command=self.show_app_settings)
         
@@ -174,6 +220,33 @@ class MainWindow:
             text="Löschen",
             width=80,
             command=self.delete_selected_document
+        ).pack(side="left", padx=(2, 10))
+        
+        # Erweiterte Aktionen
+        advanced_frame = ctk.CTkFrame(toolbar_frame)
+        advanced_frame.pack(side="left", padx=10)
+        
+        ctk.CTkLabel(advanced_frame, text="Erweitert:", font=("Arial", 12, "bold")).pack(side="left", padx=(10, 5))
+        
+        ctk.CTkButton(
+            advanced_frame,
+            text="🔍 Validierung",
+            width=90,
+            command=self.run_data_validation
+        ).pack(side="left", padx=2)
+        
+        ctk.CTkButton(
+            advanced_frame,
+            text="📊 Analytics",
+            width=80,
+            command=self.show_analytics_dialog
+        ).pack(side="left", padx=2)
+        
+        ctk.CTkButton(
+            advanced_frame,
+            text="⚡ Erinnerungen",
+            width=100,
+            command=self.manage_automatic_reminders
         ).pack(side="left", padx=(2, 10))
         
         # Einstellungen
@@ -569,7 +642,11 @@ class MainWindow:
                 company_data = self.data_manager.get_company_data()
                 settings = self.data_manager.get_settings()
                 
-                pdf_generator = InvoicePDFGenerator(company_data, settings.pdf_company_color)
+                pdf_generator = InvoicePDFGenerator(
+                    company_data, 
+                    settings.pdf_company_color,
+                    settings.enable_qr_codes
+                )
                 
                 if pdf_generator.generate_pdf(invoice, file_path):
                     self.set_status(f"PDF erfolgreich exportiert: {file_path}")
@@ -690,119 +767,1132 @@ class MainWindow:
         except Exception as e:
             messagebox.showerror("Fehler", f"Import fehlgeschlagen:\n{str(e)}")
     
-    def show_dashboard(self):
-        """Zeigt das Dashboard"""
-        try:
-            from src.gui.dashboard_window import DashboardWindow
-            DashboardWindow(self.root, self.data_manager)
-        except ImportError:
-            messagebox.showinfo("Info", "Dashboard-Feature benötigt matplotlib.\nBitte installieren Sie: pip install matplotlib")
-        except Exception as e:
-            messagebox.showerror("Fehler", f"Dashboard konnte nicht geöffnet werden:\n{str(e)}")
-    
     def run_data_validation(self):
         """Führt Datenvalidierung durch"""
         try:
-            from src.utils.validation import BusinessValidator, DataIntegrityChecker
+            from ..utils.validation import DataIntegrityChecker
+            checker = DataIntegrityChecker(self.data_manager)
+            issues = checker.check_integrity()
             
-            validator = BusinessValidator()
-            integrity_checker = DataIntegrityChecker(self.data_manager)
+            all_issues = []
+            for severity, issue_list in issues.items():
+                if issue_list:
+                    all_issues.extend([f"[{severity.upper()}] {issue}" for issue in issue_list])
             
-            # Validierung durchführen
-            issues = integrity_checker.check_integrity()
-            
-            # Ergebnisse anzeigen
-            self.show_validation_results(issues)
-            
+            if all_issues:
+                issue_text = "\n".join([f"• {issue}" for issue in all_issues])
+                messagebox.showwarning("Validierungsergebnisse", f"Folgende Probleme wurden gefunden:\n\n{issue_text}")
+            else:
+                messagebox.showinfo("Validierung", "✅ Keine Probleme gefunden! Alle Daten sind konsistent.")
+                
         except Exception as e:
-            messagebox.showerror("Fehler", f"Validierung fehlgeschlagen:\n{str(e)}")
-    
-    def show_validation_results(self, issues: dict):
-        """Zeigt Validierungsergebnisse"""
-        result_window = ctk.CTkToplevel(self.root)
-        result_window.title("Datenvalidierung")
-        result_window.geometry("600x400")
-        
-        # Text-Widget für Ergebnisse
-        text_widget = tk.Text(result_window, wrap=tk.WORD)
-        scrollbar = ttk.Scrollbar(result_window, orient="vertical", command=text_widget.yview)
-        text_widget.configure(yscrollcommand=scrollbar.set)
-        
-        # Ergebnisse formatieren
-        result_text = "DATENVALIDIERUNG ERGEBNISSE\n" + "="*40 + "\n\n"
-        
-        if issues["critical"]:
-            result_text += "❌ KRITISCHE PROBLEME:\n"
-            for issue in issues["critical"]:
-                result_text += f"  • {issue}\n"
-            result_text += "\n"
-        
-        if issues["warnings"]:
-            result_text += "⚠️ WARNUNGEN:\n"
-            for warning in issues["warnings"]:
-                result_text += f"  • {warning}\n"
-            result_text += "\n"
-        
-        if not issues["critical"] and not issues["warnings"]:
-            result_text += "✅ Keine Probleme gefunden!"
-        
-        text_widget.insert("1.0", result_text)
-        text_widget.config(state="disabled")
-        
-        # Layout
-        text_widget.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+            messagebox.showerror("Fehler", f"Fehler bei der Datenvalidierung: {str(e)}")
     
     def bulk_export(self):
-        """Massen-Export von Dokumenten"""
+        """Führt Massen-Export durch"""
         try:
-            from src.utils.pdf_preview import BulkExportManager
+            from tkinter import filedialog
             
-            # Einfacher Dialog für Massen-Export
-            export_dir = filedialog.askdirectory(title="Export-Ordner auswählen")
+            # Export-Verzeichnis wählen
+            export_dir = filedialog.askdirectory(title="Export-Verzeichnis wählen")
             if not export_dir:
                 return
             
-            # Alle Rechnungen exportieren
-            invoices = self.data_manager.get_invoices()
+            # Alle Dokumente als PDF exportieren
             company_data = self.data_manager.get_company_data()
-            settings = self.data_manager.get_settings()
+            app_settings = self.data_manager.get_settings()
+            pdf_generator = InvoicePDFGenerator(
+                company_data,
+                enable_qr_code=app_settings.enable_qr_codes
+            )
+            invoices = self.data_manager.get_invoices()
             
-            bulk_manager = BulkExportManager(company_data, settings.pdf_company_color)
-            results = bulk_manager.export_multiple_invoices(invoices, Path(export_dir))
+            exported = 0
+            for invoice in invoices:
+                try:
+                    filename = f"{invoice.invoice_number}_{invoice.invoice_date.strftime('%Y%m%d')}.pdf"
+                    filepath = os.path.join(export_dir, filename)
+                    
+                    pdf_generator.generate_pdf(invoice, filepath)
+                    exported += 1
+                except Exception as e:
+                    print(f"Fehler beim Export von {invoice.invoice_number}: {e}")
             
-            # Ergebnis anzeigen
-            message = f"Export abgeschlossen!\n\n"
-            message += f"Erfolgreich: {results['success_count']}\n"
-            message += f"Fehler: {results['error_count']}\n"
-            
-            if results['errors']:
-                message += f"\nFehler:\n" + "\n".join(results['errors'][:5])
-                if len(results['errors']) > 5:
-                    message += f"\n... und {len(results['errors']) - 5} weitere"
-            
-            messagebox.showinfo("Massen-Export", message)
+            messagebox.showinfo("Export", f"{exported} Dokumente wurden nach {export_dir} exportiert.")
             
         except Exception as e:
-            messagebox.showerror("Fehler", f"Massen-Export fehlgeschlagen:\n{str(e)}")
+            messagebox.showerror("Fehler", f"Fehler beim Massen-Export: {str(e)}")
+    
+    def show_advanced_pdf_exports(self):
+        """Zeigt erweiterte PDF-Export-Optionen"""
+        try:
+            from .advanced_pdf_window import AdvancedPDFWindow
+            AdvancedPDFWindow(self.root, self.data_manager)
+        except ImportError:
+            # Fallback: Erweiterte PDF-Optionen direkt implementieren
+            self.show_advanced_pdf_dialog()
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Fehler beim Öffnen der erweiterten PDF-Exports: {str(e)}")
+    
+    def show_advanced_pdf_dialog(self):
+        """Zeigt erweiterte PDF-Export-Dialog"""
+        try:
+            # Erstelle erweiterten PDF-Export-Dialog
+            pdf_window = ctk.CTkToplevel(self.root)
+            pdf_window.title("Erweiterte PDF-Exports")
+            pdf_window.geometry("600x500")
+            pdf_window.transient(self.root)
+            pdf_window.grab_set()
+            
+            # Header
+            header_frame = ctk.CTkFrame(pdf_window)
+            header_frame.pack(fill="x", padx=20, pady=(20, 10))
+            
+            ctk.CTkLabel(
+                header_frame,
+                text="📄 Erweiterte PDF-Export-Optionen",
+                font=ctk.CTkFont(size=18, weight="bold")
+            ).pack(pady=10)
+            
+            # Export-Optionen
+            options_frame = ctk.CTkFrame(pdf_window)
+            options_frame.pack(fill="both", expand=True, padx=20, pady=10)
+            
+            # Export nach Kunde
+            customer_frame = ctk.CTkFrame(options_frame)
+            customer_frame.pack(fill="x", pady=10, padx=10)
+            
+            ctk.CTkLabel(customer_frame, text="Export nach Kunde:", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=5)
+            
+            customers = self.data_manager.get_customers()
+            customer_names = [f"{c.customer_number} - {c.get_display_name()}" for c in customers]
+            
+            customer_var = ctk.StringVar()
+            customer_combo = ctk.CTkComboBox(customer_frame, values=customer_names, variable=customer_var)
+            customer_combo.pack(fill="x", padx=10, pady=5)
+            
+            ctk.CTkButton(
+                customer_frame,
+                text="Kunden-PDFs exportieren",
+                command=lambda: self.export_customer_pdfs(customer_var.get())
+            ).pack(pady=5)
+            
+            # Export nach Datumsbereich
+            date_frame = ctk.CTkFrame(options_frame)
+            date_frame.pack(fill="x", pady=10, padx=10)
+            
+            ctk.CTkLabel(date_frame, text="Export nach Datumsbereich:", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=5)
+            
+            date_input_frame = ctk.CTkFrame(date_frame)
+            date_input_frame.pack(fill="x", padx=10, pady=5)
+            
+            ctk.CTkLabel(date_input_frame, text="Von (YYYY-MM-DD):").pack(side="left", padx=5)
+            start_date_var = ctk.StringVar()
+            start_date_entry = ctk.CTkEntry(date_input_frame, textvariable=start_date_var, placeholder_text="2024-01-01")
+            start_date_entry.pack(side="left", padx=5)
+            
+            ctk.CTkLabel(date_input_frame, text="Bis (YYYY-MM-DD):").pack(side="left", padx=5)
+            end_date_var = ctk.StringVar()
+            end_date_entry = ctk.CTkEntry(date_input_frame, textvariable=end_date_var, placeholder_text="2024-12-31")
+            end_date_entry.pack(side="left", padx=5)
+            
+            ctk.CTkButton(
+                date_frame,
+                text="Datumsbereich exportieren",
+                command=lambda: self.export_date_range_pdfs(start_date_var.get(), end_date_var.get())
+            ).pack(pady=5)
+            
+            # Batch-Export mit Mustern
+            pattern_frame = ctk.CTkFrame(options_frame)
+            pattern_frame.pack(fill="x", pady=10, padx=10)
+            
+            ctk.CTkLabel(pattern_frame, text="Dateinamen-Muster:", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=5)
+            
+            pattern_var = ctk.StringVar(value="{doc_type}_{number}_{date}")
+            pattern_entry = ctk.CTkEntry(pattern_frame, textvariable=pattern_var)
+            pattern_entry.pack(fill="x", padx=10, pady=5)
+            
+            ctk.CTkLabel(pattern_frame, text="Verfügbare Platzhalter: {doc_type}, {number}, {date}, {customer}", font=ctk.CTkFont(size=10)).pack(padx=10)
+            
+            ctk.CTkButton(
+                pattern_frame,
+                text="Alle mit Muster exportieren",
+                command=lambda: self.export_with_pattern(pattern_var.get())
+            ).pack(pady=5)
+            
+            # Schließen-Button
+            ctk.CTkButton(
+                pdf_window,
+                text="Schließen",
+                command=pdf_window.destroy
+            ).pack(pady=20)
+            
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Fehler beim Erstellen des PDF-Export-Dialogs: {str(e)}")
+    
+    def export_customer_pdfs(self, customer_selection):
+        """Exportiert PDFs für einen bestimmten Kunden"""
+        try:
+            if not customer_selection:
+                messagebox.showwarning("Warnung", "Bitte wählen Sie einen Kunden aus.")
+                return
+            
+            customer_number = customer_selection.split(" - ")[0]
+            customer = None
+            for c in self.data_manager.get_customers():
+                if c.customer_number == customer_number:
+                    customer = c
+                    break
+            
+            if not customer:
+                messagebox.showerror("Fehler", "Kunde nicht gefunden.")
+                return
+            
+            export_dir = filedialog.askdirectory(title="Export-Verzeichnis für Kunde wählen")
+            if not export_dir:
+                return
+            
+            # PDF-Exporter verwenden
+            from ..utils.pdf_preview import BulkExportManager
+            company_data = self.data_manager.get_company_data()
+            batch_exporter = BulkExportManager(company_data)
+            
+            invoices = self.data_manager.get_invoices_by_customer(customer.id)
+            if not invoices:
+                messagebox.showinfo("Info", f"Keine Dokumente für Kunde {customer.get_display_name()} gefunden.")
+                return
+            
+            exported = batch_exporter.export_customer_invoices(
+                customer.id,
+                invoices,
+                Path(export_dir)
+            )
+            
+            messagebox.showinfo("Export", f"{exported} Dokumente für {customer.get_display_name()} exportiert.")
+            
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Fehler beim Kunden-Export: {str(e)}")
+    
+    def export_date_range_pdfs(self, start_date_str, end_date_str):
+        """Exportiert PDFs für einen Datumsbereich"""
+        try:
+            if not start_date_str or not end_date_str:
+                messagebox.showwarning("Warnung", "Bitte geben Sie Start- und Enddatum ein.")
+                return
+            
+            from datetime import datetime
+            start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
+            end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
+            
+            export_dir = filedialog.askdirectory(title="Export-Verzeichnis für Datumsbereich wählen")
+            if not export_dir:
+                return
+            
+            # PDF-Exporter verwenden
+            from ..utils.pdf_preview import BulkExportManager
+            company_data = self.data_manager.get_company_data()
+            batch_exporter = BulkExportManager(company_data)
+            
+            all_invoices = self.data_manager.get_invoices()
+            date_filtered_invoices = [
+                inv for inv in all_invoices 
+                if start_date.date() <= inv.invoice_date <= end_date.date()
+            ]
+            
+            if not date_filtered_invoices:
+                messagebox.showinfo("Info", f"Keine Dokumente im Zeitraum {start_date_str} bis {end_date_str} gefunden.")
+                return
+            
+            exported = batch_exporter.export_by_date_range(
+                date_filtered_invoices,
+                start_date,
+                end_date,
+                Path(export_dir)
+            )
+            
+            messagebox.showinfo("Export", f"{exported} Dokumente für Zeitraum {start_date_str} bis {end_date_str} exportiert.")
+            
+        except ValueError:
+            messagebox.showerror("Fehler", "Ungültiges Datumsformat. Bitte verwenden Sie YYYY-MM-DD.")
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Fehler beim Datumsbereich-Export: {str(e)}")
+    
+    def export_with_pattern(self, pattern):
+        """Exportiert alle PDFs mit benutzerdefiniertem Dateinamen-Muster"""
+        try:
+            export_dir = filedialog.askdirectory(title="Export-Verzeichnis für Muster-Export wählen")
+            if not export_dir:
+                return
+            
+            # PDF-Exporter verwenden
+            from ..utils.pdf_preview import BulkExportManager
+            company_data = self.data_manager.get_company_data()
+            batch_exporter = BulkExportManager(company_data)
+            
+            invoices = self.data_manager.get_invoices()
+            if not invoices:
+                messagebox.showinfo("Info", "Keine Dokumente zum Exportieren vorhanden.")
+                return
+            
+            exported = batch_exporter.export_multiple_invoices(
+                invoices,
+                Path(export_dir)
+            )
+            
+            messagebox.showinfo("Export", f"{exported} Dokumente mit Muster '{pattern}' exportiert.")
+            
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Fehler beim Muster-Export: {str(e)}")
+    
+    def show_email_statistics(self):
+        """Zeigt E-Mail-Statistiken"""
+        try:
+            stats = self.email_manager.get_email_statistics()
+            
+            # Erstelle Statistik-Dialog
+            stats_window = ctk.CTkToplevel(self.root)
+            stats_window.title("E-Mail-Statistiken")
+            stats_window.geometry("500x400")
+            stats_window.transient(self.root)
+            stats_window.grab_set()
+            
+            # Scrollbarer Bereich
+            scroll_frame = ctk.CTkScrollableFrame(stats_window)
+            scroll_frame.pack(fill="both", expand=True, padx=20, pady=20)
+            
+            # Header
+            ctk.CTkLabel(
+                scroll_frame,
+                text="📊 E-Mail-Statistiken",
+                font=ctk.CTkFont(size=18, weight="bold")
+            ).pack(pady=(0, 20))
+            
+            # Statistik-Items
+            for key, value in stats.items():
+                frame = ctk.CTkFrame(scroll_frame)
+                frame.pack(fill="x", pady=5)
+                
+                ctk.CTkLabel(
+                    frame,
+                    text=f"{key}:",
+                    font=ctk.CTkFont(weight="bold")
+                ).pack(side="left", padx=10, pady=10)
+                
+                ctk.CTkLabel(
+                    frame,
+                    text=str(value)
+                ).pack(side="right", padx=10, pady=10)
+            
+            # Schließen-Button
+            ctk.CTkButton(
+                stats_window,
+                text="Schließen",
+                command=stats_window.destroy
+            ).pack(pady=10)
+            
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Fehler beim Laden der E-Mail-Statistiken: {str(e)}")
+    
+    def manage_automatic_reminders(self):
+        """Verwaltet automatische Zahlungserinnerungen"""
+        try:
+            # Erstelle Erinnerungs-Management-Dialog
+            reminder_window = ctk.CTkToplevel(self.root)
+            reminder_window.title("Automatische Zahlungserinnerungen")
+            reminder_window.geometry("700x500")
+            reminder_window.transient(self.root)
+            reminder_window.grab_set()
+            
+            # Header
+            header_frame = ctk.CTkFrame(reminder_window)
+            header_frame.pack(fill="x", padx=20, pady=(20, 10))
+            
+            ctk.CTkLabel(
+                header_frame,
+                text="⚡ Automatische Zahlungserinnerungen",
+                font=ctk.CTkFont(size=18, weight="bold")
+            ).pack(side="left", padx=10, pady=10)
+            
+            # Aktions-Buttons
+            ctk.CTkButton(
+                header_frame,
+                text="Erinnerungen senden",
+                command=self.send_automatic_reminders
+            ).pack(side="right", padx=10, pady=10)
+            
+            # Pending Reminders anzeigen
+            scroll_frame = ctk.CTkScrollableFrame(reminder_window)
+            scroll_frame.pack(fill="both", expand=True, padx=20, pady=10)
+            
+            pending_reminders = self.email_manager.get_pending_reminders()
+            
+            if not pending_reminders:
+                ctk.CTkLabel(
+                    scroll_frame,
+                    text="✅ Keine offenen Erinnerungen vorhanden",
+                    font=ctk.CTkFont(size=14)
+                ).pack(pady=20)
+            else:
+                for reminder in pending_reminders:
+                    frame = ctk.CTkFrame(scroll_frame)
+                    frame.pack(fill="x", pady=5)
+                    
+                    info_text = f"Rechnung {reminder['invoice_number']} - {reminder['customer_name']}\n"
+                    info_text += f"Fällig seit: {reminder['days_overdue']} Tagen"
+                    
+                    ctk.CTkLabel(
+                        frame,
+                        text=info_text,
+                        justify="left"
+                    ).pack(side="left", padx=10, pady=10)
+                    
+                    ctk.CTkLabel(
+                        frame,
+                        text=f"Level {reminder['reminder_level']}",
+                        font=ctk.CTkFont(weight="bold")
+                    ).pack(side="right", padx=10, pady=10)
+            
+            # Schließen-Button
+            ctk.CTkButton(
+                reminder_window,
+                text="Schließen",
+                command=reminder_window.destroy
+            ).pack(pady=20)
+            
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Fehler beim Verwalten der Erinnerungen: {str(e)}")
+    
+    def send_automatic_reminders(self):
+        """Sendet automatische Erinnerungen"""
+        try:
+            sent_count, errors = self.email_manager.send_automatic_reminders()
+            
+            if errors:
+                error_text = "\n".join(errors)
+                messagebox.showwarning(
+                    "Erinnerungen gesendet", 
+                    f"{sent_count} Erinnerungen gesendet.\n\nFehler:\n{error_text}"
+                )
+            else:
+                messagebox.showinfo(
+                    "Erinnerungen gesendet", 
+                    f"✅ {sent_count} Erinnerungen erfolgreich gesendet."
+                )
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Fehler beim Senden der Erinnerungen: {str(e)}")
+    
+    def advanced_export(self, data_type, format_type):
+        """Führt erweiterte Exporte durch"""
+        try:
+            # Export-Dialog
+            if data_type == "customers":
+                file_types = {
+                    "csv": [("CSV-Dateien", "*.csv")],
+                    "excel": [("Excel-Dateien", "*.xlsx")],
+                    "xml": [("XML-Dateien", "*.xml")]
+                }
+                default_name = f"kunden_export.{format_type}"
+            else:  # invoices
+                file_types = {
+                    "csv": [("CSV-Dateien", "*.csv")],
+                    "excel": [("Excel-Dateien", "*.xlsx")],
+                    "datev": [("DATEV-Dateien", "*.csv")],
+                    "lexware": [("Lexware-Dateien", "*.csv")]
+                }
+                default_name = f"rechnungen_export.{format_type}"
+            
+            file_path = filedialog.asksaveasfilename(
+                title=f"{data_type.title()} als {format_type.upper()} exportieren",
+                defaultextension=f".{format_type}",
+                filetypes=file_types.get(format_type, [("Alle Dateien", "*.*")])
+            )
+            
+            if not file_path:
+                return
+            
+            # Export durchführen
+            from ..utils.import_export_manager import DataExporter
+            exporter = DataExporter(self.data_manager)
+            
+            success = False
+            message = ""
+            
+            if data_type == "customers":
+                if format_type == "csv":
+                    success, message = exporter.export_customers(file_path, "csv")
+                elif format_type == "excel":
+                    success, message = exporter.export_customers(file_path, "excel")
+                elif format_type == "xml":
+                    success, message = exporter.export_customers(file_path, "xml")
+            else:  # invoices
+                if format_type == "csv":
+                    success, message = exporter.export_invoices(file_path, "csv")
+                elif format_type == "excel":
+                    success, message = exporter.export_invoices(file_path, "excel")
+                elif format_type == "datev":
+                    success, message = exporter.export_invoices(file_path, "datev")
+                elif format_type == "lexware":
+                    success, message = exporter.export_invoices(file_path, "lexware")
+            
+            if success:
+                messagebox.showinfo("Export erfolgreich", f"✅ Export nach {file_path} abgeschlossen.\n\n{message}")
+            else:
+                messagebox.showerror("Export-Fehler", f"❌ Export fehlgeschlagen:\n\n{message}")
+                
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Fehler beim erweiterten Export: {str(e)}")
+    
+    def advanced_import(self, format_type):
+        """Führt erweiterte Importe durch"""
+        try:
+            # Import-Dialog
+            file_types = {
+                "csv": [("CSV-Dateien", "*.csv")],
+                "excel": [("Excel-Dateien", "*.xlsx")]
+            }
+            
+            file_path = filedialog.askopenfilename(
+                title=f"{format_type.upper()}-Datei zum Importieren wählen",
+                filetypes=file_types.get(format_type, [("Alle Dateien", "*.*")])
+            )
+            
+            if not file_path:
+                return
+            
+            # Import-Optionen-Dialog
+            import_window = ctk.CTkToplevel(self.root)
+            import_window.title(f"{format_type.upper()}-Import")
+            import_window.geometry("400x300")
+            import_window.transient(self.root)
+            import_window.grab_set()
+            
+            # Header
+            ctk.CTkLabel(
+                import_window,
+                text=f"📥 {format_type.upper()}-Import",
+                font=ctk.CTkFont(size=16, weight="bold")
+            ).pack(pady=20)
+            
+            # Datei-Info
+            file_frame = ctk.CTkFrame(import_window)
+            file_frame.pack(fill="x", padx=20, pady=10)
+            
+            ctk.CTkLabel(file_frame, text="Datei:", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=5)
+            ctk.CTkLabel(file_frame, text=os.path.basename(file_path)).pack(anchor="w", padx=10)
+            
+            # Import-Optionen
+            options_frame = ctk.CTkFrame(import_window)
+            options_frame.pack(fill="x", padx=20, pady=10)
+            
+            ctk.CTkLabel(options_frame, text="Optionen:", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=5)
+            
+            update_existing_var = ctk.BooleanVar()
+            ctk.CTkCheckBox(
+                options_frame,
+                text="Vorhandene Datensätze aktualisieren",
+                variable=update_existing_var
+            ).pack(anchor="w", padx=10, pady=2)
+            
+            validate_data_var = ctk.BooleanVar(value=True)
+            ctk.CTkCheckBox(
+                options_frame,
+                text="Daten vor Import validieren",
+                variable=validate_data_var
+            ).pack(anchor="w", padx=10, pady=2)
+            
+            # Buttons
+            button_frame = ctk.CTkFrame(import_window)
+            button_frame.pack(fill="x", padx=20, pady=20)
+            
+            def perform_import():
+                try:
+                    from ..utils.import_export_manager import DataImporter
+                    importer = DataImporter(self.data_manager)
+                    
+                    # Import durchführen
+                    success, message, stats = importer.import_customers(
+                        file_path,
+                        format_type,
+                        update_existing=update_existing_var.get()
+                    )
+                    
+                    import_window.destroy()
+                    
+                    if success:
+                        stats_text = "\n".join([f"• {key}: {value}" for key, value in stats.items()])
+                        messagebox.showinfo(
+                            "Import erfolgreich", 
+                            f"✅ Import abgeschlossen!\n\n{message}\n\nStatistiken:\n{stats_text}"
+                        )
+                        # Listen aktualisieren
+                        self.refresh_all_lists()
+                    else:
+                        messagebox.showerror("Import-Fehler", f"❌ Import fehlgeschlagen:\n\n{message}")
+                        
+                except Exception as e:
+                    import_window.destroy()
+                    messagebox.showerror("Fehler", f"Fehler beim Import: {str(e)}")
+            
+            ctk.CTkButton(
+                button_frame,
+                text="Abbrechen",
+                command=import_window.destroy
+            ).pack(side="left", padx=10)
+            
+            ctk.CTkButton(
+                button_frame,
+                text="Importieren",
+                command=perform_import
+            ).pack(side="right", padx=10)
+            
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Fehler beim erweiterten Import: {str(e)}")
+    
+    def show_analytics_dialog(self):
+        """Zeigt erweiterte Analyse-Optionen"""
+        try:
+            # Analytics-Dialog
+            analytics_window = ctk.CTkToplevel(self.root)
+            analytics_window.title("Erweiterte Analytics")
+            analytics_window.geometry("600x500")
+            analytics_window.transient(self.root)
+            analytics_window.grab_set()
+            
+            # Header
+            header_frame = ctk.CTkFrame(analytics_window)
+            header_frame.pack(fill="x", padx=20, pady=(20, 10))
+            
+            ctk.CTkLabel(
+                header_frame,
+                text="📊 Erweiterte Analytics & Berichte",
+                font=ctk.CTkFont(size=18, weight="bold")
+            ).pack(pady=10)
+            
+            # Analytics-Optionen
+            options_frame = ctk.CTkScrollableFrame(analytics_window)
+            options_frame.pack(fill="both", expand=True, padx=20, pady=10)
+            
+            # PDF-Analyse
+            pdf_frame = ctk.CTkFrame(options_frame)
+            pdf_frame.pack(fill="x", pady=10)
+            
+            ctk.CTkLabel(pdf_frame, text="📄 Dokument-Analyse", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=5)
+            
+            ctk.CTkButton(
+                pdf_frame,
+                text="Dokument-Statistiken anzeigen",
+                command=self.show_document_analytics
+            ).pack(anchor="w", padx=10, pady=5)
+            
+            # E-Mail-Analyse
+            email_frame = ctk.CTkFrame(options_frame)
+            email_frame.pack(fill="x", pady=10)
+            
+            ctk.CTkLabel(email_frame, text="📧 E-Mail-Analyse", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=5)
+            
+            ctk.CTkButton(
+                email_frame,
+                text="E-Mail-Statistiken anzeigen",
+                command=self.show_email_statistics
+            ).pack(anchor="w", padx=10, pady=5)
+            
+            # Compliance-Analyse
+            compliance_frame = ctk.CTkFrame(options_frame)
+            compliance_frame.pack(fill="x", pady=10)
+            
+            ctk.CTkLabel(compliance_frame, text="📋 Compliance-Analyse", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=5)
+            
+            ctk.CTkButton(
+                compliance_frame,
+                text="Compliance-Bericht erstellen",
+                command=self.show_compliance_report
+            ).pack(anchor="w", padx=10, pady=5)
+            
+            # Geschäfts-Analytics
+            business_frame = ctk.CTkFrame(options_frame)
+            business_frame.pack(fill="x", pady=10)
+            
+            ctk.CTkLabel(business_frame, text="💼 Geschäfts-Analytics", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=5)
+            
+            ctk.CTkButton(
+                business_frame,
+                text="Umsatz-Analyse",
+                command=self.show_revenue_analysis
+            ).pack(anchor="w", padx=10, pady=5)
+            
+            ctk.CTkButton(
+                business_frame,
+                text="Kunden-Analyse",
+                command=self.show_customer_analysis
+            ).pack(anchor="w", padx=10, pady=5)
+            
+            # Schließen-Button
+            ctk.CTkButton(
+                analytics_window,
+                text="Schließen",
+                command=analytics_window.destroy
+            ).pack(pady=20)
+            
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Fehler beim Öffnen der Analytics: {str(e)}")
+    
+    def show_document_analytics(self):
+        """Zeigt Dokument-Statistiken"""
+        try:
+            from ..utils.pdf_preview import DocumentAnalyzer
+            
+            analyzer = DocumentAnalyzer()
+            invoices = self.data_manager.get_invoices()
+            
+            if not invoices:
+                messagebox.showinfo("Info", "Keine Dokumente für Analyse vorhanden.")
+                return
+            
+            analysis = analyzer.analyze_invoices(invoices)
+            
+            # Analyse-Ergebnisse anzeigen
+            result_window = ctk.CTkToplevel(self.root)
+            result_window.title("Dokument-Analyse")
+            result_window.geometry("500x400")
+            result_window.transient(self.root)
+            result_window.grab_set()
+            
+            scroll_frame = ctk.CTkScrollableFrame(result_window)
+            scroll_frame.pack(fill="both", expand=True, padx=20, pady=20)
+            
+            ctk.CTkLabel(
+                scroll_frame,
+                text="📄 Dokument-Analyse-Ergebnisse",
+                font=ctk.CTkFont(size=16, weight="bold")
+            ).pack(pady=(0, 15))
+            
+            for key, value in analysis.items():
+                frame = ctk.CTkFrame(scroll_frame)
+                frame.pack(fill="x", pady=5)
+                
+                ctk.CTkLabel(
+                    frame,
+                    text=f"{key}:",
+                    font=ctk.CTkFont(weight="bold")
+                ).pack(side="left", padx=10, pady=10)
+                
+                ctk.CTkLabel(
+                    frame,
+                    text=str(value)
+                ).pack(side="right", padx=10, pady=10)
+            
+            ctk.CTkButton(
+                result_window,
+                text="Schließen",
+                command=result_window.destroy
+            ).pack(pady=10)
+            
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Fehler bei der Dokument-Analyse: {str(e)}")
+    
+    def show_compliance_report(self):
+        """Zeigt Compliance-Bericht"""
+        try:
+            report = self.compliance_manager.generate_compliance_report()
+            
+            # Compliance-Bericht anzeigen
+            report_window = ctk.CTkToplevel(self.root)
+            report_window.title("Compliance-Bericht")
+            report_window.geometry("600x500")
+            report_window.transient(self.root)
+            report_window.grab_set()
+            
+            scroll_frame = ctk.CTkScrollableFrame(report_window)
+            scroll_frame.pack(fill="both", expand=True, padx=20, pady=20)
+            
+            ctk.CTkLabel(
+                scroll_frame,
+                text="📋 Compliance-Bericht",
+                font=ctk.CTkFont(size=18, weight="bold")
+            ).pack(pady=(0, 20))
+            
+            # Bericht-Sections
+            for section, data in report.items():
+                section_frame = ctk.CTkFrame(scroll_frame)
+                section_frame.pack(fill="x", pady=10)
+                
+                ctk.CTkLabel(
+                    section_frame,
+                    text=section.replace("_", " ").title(),
+                    font=ctk.CTkFont(size=14, weight="bold")
+                ).pack(anchor="w", padx=10, pady=10)
+                
+                if isinstance(data, dict):
+                    for key, value in data.items():
+                        detail_frame = ctk.CTkFrame(section_frame)
+                        detail_frame.pack(fill="x", padx=10, pady=2)
+                        
+                        ctk.CTkLabel(
+                            detail_frame,
+                            text=f"• {key}: {value}",
+                            font=ctk.CTkFont(size=11)
+                        ).pack(anchor="w", padx=10, pady=5)
+                elif isinstance(data, list):
+                    for item in data:
+                        ctk.CTkLabel(
+                            section_frame,
+                            text=f"• {item}",
+                            font=ctk.CTkFont(size=11)
+                        ).pack(anchor="w", padx=20, pady=2)
+                else:
+                    ctk.CTkLabel(
+                        section_frame,
+                        text=str(data),
+                        font=ctk.CTkFont(size=11)
+                    ).pack(anchor="w", padx=20, pady=5)
+            
+            ctk.CTkButton(
+                report_window,
+                text="Schließen",
+                command=report_window.destroy
+            ).pack(pady=20)
+            
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Fehler beim Compliance-Bericht: {str(e)}")
+    
+    def show_revenue_analysis(self):
+        """Zeigt Umsatz-Analyse"""
+        try:
+            invoices = self.data_manager.get_invoices()
+            if not invoices:
+                messagebox.showinfo("Info", "Keine Rechnungen für Umsatz-Analyse vorhanden.")
+                return
+            
+            # Einfache Umsatz-Statistiken
+            total_revenue = 0.0
+            invoice_count = 0
+            
+            for invoice in invoices:
+                if invoice.document_type.value == "Rechnung":
+                    total_revenue += float(invoice.calculate_total_gross())
+                    invoice_count += 1
+            
+            avg_invoice = total_revenue / invoice_count if invoice_count > 0 else 0.0
+            
+            # Analyse-Dialog
+            analysis_window = ctk.CTkToplevel(self.root)
+            analysis_window.title("Umsatz-Analyse")
+            analysis_window.geometry("400x300")
+            analysis_window.transient(self.root)
+            analysis_window.grab_set()
+            
+            # Statistiken anzeigen
+            stats_frame = ctk.CTkFrame(analysis_window)
+            stats_frame.pack(fill="both", expand=True, padx=20, pady=20)
+            
+            ctk.CTkLabel(
+                stats_frame,
+                text="💼 Umsatz-Übersicht",
+                font=ctk.CTkFont(size=18, weight="bold")
+            ).pack(pady=20)
+            
+            ctk.CTkLabel(
+                stats_frame,
+                text=f"Gesamtumsatz: {total_revenue:,.2f} €".replace(".", ","),
+                font=ctk.CTkFont(size=14)
+            ).pack(pady=5)
+            
+            ctk.CTkLabel(
+                stats_frame,
+                text=f"Anzahl Rechnungen: {invoice_count}",
+                font=ctk.CTkFont(size=14)
+            ).pack(pady=5)
+            
+            ctk.CTkLabel(
+                stats_frame,
+                text=f"Durchschnittliche Rechnung: {avg_invoice:,.2f} €".replace(".", ","),
+                font=ctk.CTkFont(size=14)
+            ).pack(pady=5)
+            
+            ctk.CTkButton(
+                analysis_window,
+                text="Schließen",
+                command=analysis_window.destroy
+            ).pack(pady=20)
+            
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Fehler bei der Umsatz-Analyse: {str(e)}")
+    
+    def show_customer_analysis(self):
+        """Zeigt Kunden-Analyse"""
+        try:
+            customers = self.data_manager.get_customers()
+            invoices = self.data_manager.get_invoices()
+            
+            if not customers:
+                messagebox.showinfo("Info", "Keine Kunden für Analyse vorhanden.")
+                return
+            
+            # Analyse-Dialog
+            analysis_window = ctk.CTkToplevel(self.root)
+            analysis_window.title("Kunden-Analyse")
+            analysis_window.geometry("500x400")
+            analysis_window.transient(self.root)
+            analysis_window.grab_set()
+            
+            scroll_frame = ctk.CTkScrollableFrame(analysis_window)
+            scroll_frame.pack(fill="both", expand=True, padx=20, pady=20)
+            
+            ctk.CTkLabel(
+                scroll_frame,
+                text="👥 Kunden-Übersicht",
+                font=ctk.CTkFont(size=18, weight="bold")
+            ).pack(pady=(0, 20))
+            
+            # Basis-Statistiken
+            stats_frame = ctk.CTkFrame(scroll_frame)
+            stats_frame.pack(fill="x", pady=10)
+            
+            ctk.CTkLabel(
+                stats_frame,
+                text=f"Gesamtzahl Kunden: {len(customers)}",
+                font=ctk.CTkFont(size=14, weight="bold")
+            ).pack(pady=10)
+            
+            # Kunden-Liste mit Basis-Infos
+            for customer in customers[:10]:  # Nur erste 10 zeigen
+                customer_frame = ctk.CTkFrame(scroll_frame)
+                customer_frame.pack(fill="x", pady=2)
+                
+                info_text = f"{customer.customer_number} - {customer.get_display_name()}"
+                if hasattr(customer, 'city') and customer.city:
+                    info_text += f" ({customer.city})"
+                
+                ctk.CTkLabel(
+                    customer_frame,
+                    text=info_text,
+                    font=ctk.CTkFont(size=11)
+                ).pack(anchor="w", padx=10, pady=5)
+            
+            if len(customers) > 10:
+                ctk.CTkLabel(
+                    scroll_frame,
+                    text=f"... und {len(customers) - 10} weitere Kunden",
+                    font=ctk.CTkFont(size=10),
+                    text_color=("gray50", "gray50")
+                ).pack(pady=10)
+            
+            ctk.CTkButton(
+                analysis_window,
+                text="Schließen",
+                command=analysis_window.destroy
+            ).pack(pady=20)
+            
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Fehler bei der Kunden-Analyse: {str(e)}")
+    
+    def show_email_settings(self):
+        """Zeigt E-Mail-Einstellungen"""
+        try:
+            from .email_settings_window import EmailSettingsWindow
+            EmailSettingsWindow(self.root, self.email_manager)
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Fehler beim Öffnen der E-Mail-Einstellungen: {str(e)}")
+    
+    def show_security_settings(self):
+        """Zeigt Sicherheitseinstellungen"""
+        try:
+            from .security_window import SecuritySettingsWindow
+            SecuritySettingsWindow(self.root, self.security_manager)
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Fehler beim Öffnen der Sicherheitseinstellungen: {str(e)}")
+    
+    def show_compliance_management(self):
+        """Zeigt Compliance-Management"""
+        try:
+            from .compliance_window import ComplianceWindow
+            ComplianceWindow(self.root, self.compliance_manager)
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Fehler beim Öffnen des Compliance-Managements: {str(e)}")
+    
+    def show_dashboard(self):
+        """Zeigt Dashboard"""
+        try:
+            if self.dashboard_window is None or not self.dashboard_window.window.winfo_exists():
+                self.dashboard_window = DashboardWindow(self.root, self.data_manager)
+            else:
+                self.dashboard_window.window.lift()
+                self.dashboard_window.window.focus()
+        except Exception as e:
+            messagebox.showerror("Fehler", f"Fehler beim Öffnen des Dashboards: {str(e)}")
+
+
     
     def show_about(self):
         """Zeigt Über-Dialog"""
         about_text = """
-Rechnungs-Tool v1.0
+🏢 Rechnungs-Tool - Enterprise Edition v2.1
 
-Ein professionelles Tool zur Erstellung und Verwaltung 
-von Rechnungen, Angeboten und Gutschriften.
+Ein umfassendes Business-Management-System zur Erstellung und 
+Verwaltung von Rechnungen, Angeboten und Gutschriften.
 
-✅ Deutsche Steuervorschriften konform
-✅ PDF-Export mit modernem Design  
-✅ Offline-fähige JSON-Datenhaltung
+📋 KERNFUNKTIONEN:
+✅ Deutsche Steuervorschriften konform (GoBD)
+✅ PDF-Export mit professionellem Design  
+✅ Erweiterte Dokumenttypen (Angebote, Lieferscheine, Stornos)
 ✅ Automatische Backup-Funktionen
 ✅ Umfassende Datenvalidierung
 
-Entwickelt für kleine und mittelständische Unternehmen.
+🔐 SICHERHEIT & COMPLIANCE:
+✅ Benutzerverwaltung mit Rollenkonzept
+✅ Audit-Logging aller Aktivitäten
+✅ DSGVO-konforme Datenhaltung
+✅ Verschlüsselung sensibler Daten
+✅ 2FA-Authentifizierung
+
+📧 BUSINESS-FEATURES:
+✅ Email-Integration mit Templates
+✅ Automatische Zahlungserinnerungen
+✅ CRM-Funktionen für Kundenmanagement
+✅ Import/Export (CSV, Excel, DATEV, Lexware)
+✅ Live-Dashboard mit Statistiken
+
+🎨 BENUTZEROBERFLÄCHE:
+✅ Modernes Dark/Light Theme
+✅ Responsive Design
+✅ Interaktive Charts und Grafiken
+✅ PDF-Live-Vorschau
+
+Entwickelt für kleine bis große Unternehmen.
+© 2025 - Professional Business Solutions
         """
-        messagebox.showinfo("Über Rechnungs-Tool", about_text)
+        self.show_modern_about_dialog()
+    
+    def show_modern_about_dialog(self):
+        """Zeigt modernes About-Dialog"""
+        about_window = ctk.CTkToplevel(self.root)
+        about_window.title("Über das Rechnungs-Tool")
+        about_window.geometry("600x700")
+        about_window.transient(self.root)
+        about_window.grab_set()
+        
+        # Theme anwenden
+        theme_manager.setup_window_theme(about_window)
+        
+        # Zentrierung
+        about_window.update_idletasks()
+        x = (about_window.winfo_screenwidth() // 2) - (600 // 2)
+        y = (about_window.winfo_screenheight() // 2) - (700 // 2)
+        about_window.geometry(f"600x700+{x}+{y}")
+        
+        # Scrollbarer Container
+        scroll_frame = ctk.CTkScrollableFrame(about_window)
+        scroll_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        
+        # Header
+        header_frame = ctk.CTkFrame(scroll_frame)
+        header_frame.pack(fill="x", pady=(0, 20))
+        
+        title_label = ctk.CTkLabel(
+            header_frame,
+            text="🏢 Rechnungs-Tool",
+            font=ctk.CTkFont(size=24, weight="bold")
+        )
+        title_label.pack(pady=10)
+        
+        version_label = ctk.CTkLabel(
+            header_frame,
+            text="Enterprise Edition v2.1",
+            font=ctk.CTkFont(size=16),
+            text_color=("gray50", "gray50")
+        )
+        version_label.pack()
+        
+        subtitle_label = ctk.CTkLabel(
+            header_frame,
+            text="Professionelles Business-Management-System",
+            font=ctk.CTkFont(size=14),
+            text_color=("gray60", "gray40")
+        )
+        subtitle_label.pack(pady=(5, 10))
+        
+        # Features-Sektion
+        features = [
+            ("📋 KERNFUNKTIONEN", [
+                "Deutsche Steuervorschriften konform (GoBD)",
+                "PDF-Export mit professionellem Design",
+                "Erweiterte Dokumenttypen (Angebote, Lieferscheine)",
+                "Automatische Backup-Funktionen",
+                "Umfassende Datenvalidierung"
+            ]),
+            ("🔐 SICHERHEIT & COMPLIANCE", [
+                "Benutzerverwaltung mit Rollenkonzept",
+                "Audit-Logging aller Aktivitäten", 
+                "DSGVO-konforme Datenhaltung",
+                "Verschlüsselung sensibler Daten",
+                "2FA-Authentifizierung"
+            ]),
+            ("📧 BUSINESS-FEATURES", [
+                "Email-Integration mit Templates",
+                "Automatische Zahlungserinnerungen",
+                "CRM-Funktionen für Kundenmanagement", 
+                "Import/Export (CSV, Excel, DATEV, Lexware)",
+                "Live-Dashboard mit Statistiken"
+            ]),
+            ("🎨 BENUTZEROBERFLÄCHE", [
+                "Modernes Dark/Light Theme",
+                "Responsive Design",
+                "Interaktive Charts und Grafiken",
+                "PDF-Live-Vorschau",
+                "Touch-optimierte Bedienung"
+            ])
+        ]
+        
+        for section_title, items in features:
+            # Sektion-Header
+            section_frame = ctk.CTkFrame(scroll_frame)
+            section_frame.pack(fill="x", pady=(10, 0))
+            
+            section_label = ctk.CTkLabel(
+                section_frame,
+                text=section_title,
+                font=ctk.CTkFont(size=14, weight="bold"),
+                anchor="w"
+            )
+            section_label.pack(fill="x", padx=15, pady=10)
+            
+            # Feature-Liste
+            for item in items:
+                item_label = ctk.CTkLabel(
+                    section_frame,
+                    text=f"✅ {item}",
+                    font=ctk.CTkFont(size=12),
+                    anchor="w"
+                )
+                item_label.pack(fill="x", padx=25, pady=2)
+        
+        # Footer
+        footer_frame = ctk.CTkFrame(scroll_frame)
+        footer_frame.pack(fill="x", pady=(20, 0))
+        
+        target_label = ctk.CTkLabel(
+            footer_frame,
+            text="Entwickelt für kleine bis große Unternehmen",
+            font=ctk.CTkFont(size=12, weight="bold")
+        )
+        target_label.pack(pady=10)
+        
+        copyright_label = ctk.CTkLabel(
+            footer_frame,
+            text="© 2025 Professional Business Solutions",
+            font=ctk.CTkFont(size=10),
+            text_color=("gray50", "gray50")
+        )
+        copyright_label.pack(pady=(0, 10))
+        
+        # Schließen-Button
+        close_btn = ctk.CTkButton(
+            about_window,
+            text="OK",
+            width=100,
+            command=about_window.destroy
+        )
+        close_btn.pack(pady=20)
 
     # Einstellungen
     def show_company_settings(self):
@@ -825,8 +1915,9 @@ Entwickelt für kleine und mittelständische Unternehmen.
             window = AppSettingsWindow(self.root, settings)
             if window.result:
                 self.data_manager.update_settings(window.result)
-                # Theme kann sich geändert haben
-                ctk.set_appearance_mode(window.result.theme_mode)
+                # Theme über Theme-Manager aktualisieren
+                theme_manager.apply_theme(window.result.theme_mode, "blue")
+                theme_manager.setup_window_theme(self.root)
                 self.refresh_all_lists()
         except Exception as e:
             messagebox.showerror("Fehler", f"Anwendungseinstellungen konnten nicht geöffnet werden:\n{str(e)}")

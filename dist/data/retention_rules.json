@@ -1,0 +1,83 @@
+{
+  "f3571fc8e0d65808": {
+    "regulation": "DSGVO",
+    "data_category": "Personenbezogene Daten",
+    "retention_period_years": 3,
+    "purpose": "Vertragserfüllung",
+    "legal_basis": "Art. 6 Abs. 1 lit. b DSGVO",
+    "deletion_criteria": "Nach Vertragsbeendigung + 3 Jahre",
+    "exceptions": [
+      "Rechtliche Streitigkeiten",
+      "Steuerprüfung"
+    ],
+    "created_at": "2025-09-08T01:48:59.880115",
+    "updated_at": "2025-09-08T01:48:59.880119"
+  },
+  "d9ec6fc629f728e7": {
+    "regulation": "GoBD",
+    "data_category": "Finanzdaten",
+    "retention_period_years": 10,
+    "purpose": "Buchhaltung",
+    "legal_basis": "§ 147 AO",
+    "deletion_criteria": "Nach 10 Jahren ab Geschäftsjahresende",
+    "exceptions": [
+      "Laufende Verfahren",
+      "Betriebsprüfung"
+    ],
+    "created_at": "2025-09-08T01:48:59.880128",
+    "updated_at": "2025-09-08T01:48:59.880129"
+  },
+  "50ab9caba11e2668": {
+    "regulation": "GoBD",
+    "data_category": "Geschäftsdaten",
+    "retention_period_years": 6,
+    "purpose": "Buchhaltung",
+    "legal_basis": "§ 257 HGB",
+    "deletion_criteria": "Nach 6 Jahren ab Entstehung",
+    "exceptions": [
+      "Handelsrechtliche Aufbewahrung"
+    ],
+    "created_at": "2025-09-08T01:48:59.880132",
+    "updated_at": "2025-09-08T01:48:59.880132"
+  },
+  "c50a124c0b29417a": {
+    "regulation": "HGB",
+    "data_category": "Geschäftsdaten",
+    "retention_period_years": 10,
+    "purpose": "Buchhaltung",
+    "legal_basis": "§ 257 HGB",
+    "deletion_criteria": "Nach 10 Jahren (Bücher, Inventare)",
+    "exceptions": [
+      "Laufende Geschäfte"
+    ],
+    "created_at": "2025-09-08T01:48:59.880135",
+    "updated_at": "2025-09-08T01:48:59.880135"
+  },
+  "a03063dd3a7b0893": {
+    "regulation": "DSGVO",
+    "data_category": "Kommunikationsdaten",
+    "retention_period_years": 1,
+    "purpose": "Berechtigtes Interesse",
+    "legal_basis": "Art. 6 Abs. 1 lit. f DSGVO",
+    "deletion_criteria": "Nach 1 Jahr oder Widerruf",
+    "exceptions": [
+      "Rechtliche Dokumentation"
+    ],
+    "created_at": "2025-09-08T01:48:59.880138",
+    "updated_at": "2025-09-08T01:48:59.880138"
+  },
+  "af02ab6758608348": {
+    "regulation": "DSGVO",
+    "data_category": "Technische Daten",
+    "retention_period_years": 1,
+    "purpose": "Berechtigtes Interesse",
+    "legal_basis": "Art. 6 Abs. 1 lit. f DSGVO",
+    "deletion_criteria": "Nach 1 Jahr automatisch",
+    "exceptions": [
+      "Sicherheitsvorfälle",
+      "Forensik"
+    ],
+    "created_at": "2025-09-08T01:48:59.880140",
+    "updated_at": "2025-09-08T01:48:59.880141"
+  }
+}

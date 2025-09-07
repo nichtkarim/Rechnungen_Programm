@@ -11,6 +11,7 @@ from tkcalendar import DateEntry
 
 from src.models import Invoice, Customer, InvoicePosition, DocumentType, TaxRate
 from src.utils.data_manager import DataManager
+from src.utils.theme_manager import theme_manager
 
 
 class InvoiceEditWindow:
@@ -31,6 +32,9 @@ class InvoiceEditWindow:
         self.window.geometry("1000x700")
         self.window.transient(parent)
         self.window.grab_set()
+        
+        # Theme anwenden
+        theme_manager.setup_window_theme(self.window)
         
         # GUI erstellen
         self.setup_gui()
@@ -114,20 +118,19 @@ class InvoiceEditWindow:
         basic_frame = ctk.CTkFrame(self.notebook)
         self.notebook.add(basic_frame, text="Grunddaten")
         
-        # Scrollable Frame
-        canvas = tk.Canvas(basic_frame)
-        scrollbar = ttk.Scrollbar(basic_frame, orient="vertical", command=canvas.yview)
-        scrollable_frame = ctk.CTkFrame(canvas)
+        # Grid-Layout für den Tab
+        basic_frame.columnconfigure(0, weight=1)
+        basic_frame.rowconfigure(0, weight=1)
         
-        canvas.configure(yscrollcommand=scrollbar.set)
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+        # Scrollbarer Hauptbereich
+        scrollable_frame = ctk.CTkScrollableFrame(basic_frame)
+        scrollable_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
         
         # Dokumenttyp und Nummer
         doc_frame = ctk.CTkFrame(scrollable_frame)
         doc_frame.pack(fill="x", padx=10, pady=10)
+        doc_frame.columnconfigure(1, weight=1)
+        doc_frame.columnconfigure(3, weight=1)
         
         ctk.CTkLabel(doc_frame, text="Dokumenttyp:", font=("Arial", 12, "bold")).grid(row=0, column=0, sticky="w", padx=10, pady=5)
         
@@ -139,17 +142,19 @@ class InvoiceEditWindow:
             width=150,
             command=self.on_document_type_changed
         )
-        doc_type_combo.grid(row=0, column=1, sticky="w", padx=10, pady=5)
+        doc_type_combo.grid(row=0, column=1, sticky="ew", padx=10, pady=5)
         
         ctk.CTkLabel(doc_frame, text="Nummer:").grid(row=0, column=2, sticky="w", padx=(20, 10), pady=5)
         
         self.invoice_number_var = ctk.StringVar(value=self.invoice.invoice_number)
-        invoice_number_entry = ctk.CTkEntry(doc_frame, textvariable=self.invoice_number_var, width=150)
-        invoice_number_entry.grid(row=0, column=3, sticky="w", padx=10, pady=5)
+        invoice_number_entry = ctk.CTkEntry(doc_frame, textvariable=self.invoice_number_var)
+        invoice_number_entry.grid(row=0, column=3, sticky="ew", padx=10, pady=5)
         
         # Daten
         date_frame = ctk.CTkFrame(scrollable_frame)
         date_frame.pack(fill="x", padx=10, pady=10)
+        date_frame.columnconfigure(1, weight=1)
+        date_frame.columnconfigure(3, weight=1)
         
         ctk.CTkLabel(date_frame, text="Rechnungsdatum:").grid(row=0, column=0, sticky="w", padx=10, pady=5)
         
@@ -161,7 +166,7 @@ class InvoiceEditWindow:
             borderwidth=2,
             date_pattern='dd.mm.yyyy'
         )
-        self.invoice_date_entry.grid(row=0, column=1, sticky="w", padx=10, pady=5)
+        self.invoice_date_entry.grid(row=0, column=1, sticky="ew", padx=10, pady=5)
         self.invoice_date_entry.set_date(self.invoice.invoice_date.date())
         
         ctk.CTkLabel(date_frame, text="Leistungsdatum:").grid(row=0, column=2, sticky="w", padx=(20, 10), pady=5)
@@ -174,13 +179,14 @@ class InvoiceEditWindow:
             borderwidth=2,
             date_pattern='dd.mm.yyyy'
         )
-        self.service_date_entry.grid(row=0, column=3, sticky="w", padx=10, pady=5)
+        self.service_date_entry.grid(row=0, column=3, sticky="ew", padx=10, pady=5)
         if self.invoice.service_date:
             self.service_date_entry.set_date(self.invoice.service_date.date())
         
         # Kunde
         customer_frame = ctk.CTkFrame(scrollable_frame)
         customer_frame.pack(fill="x", padx=10, pady=10)
+        customer_frame.columnconfigure(1, weight=1)
         
         ctk.CTkLabel(customer_frame, text="Kunde:", font=("Arial", 12, "bold")).grid(row=0, column=0, sticky="w", padx=10, pady=5)
         
@@ -198,10 +204,9 @@ class InvoiceEditWindow:
             customer_frame,
             values=customer_values,
             variable=self.customer_var,
-            width=300,
             command=self.on_customer_changed
         )
-        customer_combo.grid(row=0, column=1, sticky="w", padx=10, pady=5)
+        customer_combo.grid(row=0, column=1, sticky="ew", padx=10, pady=5)
         
         ctk.CTkButton(
             customer_frame,
@@ -213,8 +218,9 @@ class InvoiceEditWindow:
         # Zahlungskonditionen
         payment_frame = ctk.CTkFrame(scrollable_frame)
         payment_frame.pack(fill="x", padx=10, pady=10)
+        payment_frame.columnconfigure(1, weight=1)
         
-        ctk.CTkLabel(payment_frame, text="Zahlungskonditionen:", font=("Arial", 12, "bold")).grid(row=0, column=0, sticky="w", padx=10, pady=5)
+        ctk.CTkLabel(payment_frame, text="Zahlungskonditionen:", font=("Arial", 12, "bold")).grid(row=0, column=0, columnspan=2, sticky="w", padx=10, pady=5)
         
         ctk.CTkLabel(payment_frame, text="Zahlungsziel (Tage):").grid(row=1, column=0, sticky="w", padx=10, pady=5)
         
@@ -225,14 +231,15 @@ class InvoiceEditWindow:
         # Referenzen
         ref_frame = ctk.CTkFrame(scrollable_frame)
         ref_frame.pack(fill="x", padx=10, pady=10)
+        ref_frame.columnconfigure(1, weight=1)
         
-        ctk.CTkLabel(ref_frame, text="Referenzen:", font=("Arial", 12, "bold")).grid(row=0, column=0, sticky="w", padx=10, pady=5)
+        ctk.CTkLabel(ref_frame, text="Referenzen:", font=("Arial", 12, "bold")).grid(row=0, column=0, columnspan=2, sticky="w", padx=10, pady=5)
         
         ctk.CTkLabel(ref_frame, text="Angebotsnummer:").grid(row=1, column=0, sticky="w", padx=10, pady=5)
         
         self.offer_number_var = ctk.StringVar(value=self.invoice.offer_number)
-        offer_number_entry = ctk.CTkEntry(ref_frame, textvariable=self.offer_number_var, width=150)
-        offer_number_entry.grid(row=1, column=1, sticky="w", padx=10, pady=5)
+        offer_number_entry = ctk.CTkEntry(ref_frame, textvariable=self.offer_number_var)
+        offer_number_entry.grid(row=1, column=1, sticky="ew", padx=10, pady=5)
         
         # Status (nur bei Rechnungen)
         if self.invoice.document_type == DocumentType.RECHNUNG:
@@ -244,10 +251,6 @@ class InvoiceEditWindow:
             self.is_paid_var = ctk.BooleanVar(value=self.invoice.is_paid)
             paid_checkbox = ctk.CTkCheckBox(status_frame, text="Bezahlt", variable=self.is_paid_var)
             paid_checkbox.grid(row=0, column=1, sticky="w", padx=10, pady=5)
-        
-        # Frame-Größe aktualisieren
-        scrollable_frame.update_idletasks()
-        canvas.configure(scrollregion=canvas.bbox("all"))
     
     def create_positions_tab(self):
         """Erstellt den Positionen-Tab"""

@@ -10,6 +10,34 @@ from dataclasses import dataclass
 from src.models import Customer, Invoice, InvoicePosition, CompanyData
 
 
+class DataValidator:
+    """Einfache Datenvalidierung (Kompatibilität)"""
+    
+    @staticmethod
+    def validate_email(email: str) -> bool:
+        """Validiert E-Mail-Adresse"""
+        if not email:
+            return False
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return bool(re.match(pattern, email))
+    
+    @staticmethod
+    def validate_tax_id(tax_id: str) -> bool:
+        """Validiert Steuernummer"""
+        if not tax_id:
+            return False
+        clean_tax_id = re.sub(r'[^0-9]', '', tax_id)
+        return len(clean_tax_id) >= 10
+    
+    @staticmethod
+    def validate_vat_id(vat_id: str) -> bool:
+        """Validiert USt-ID"""
+        if not vat_id:
+            return False
+        pattern = r'^DE[0-9]{9}$'
+        return bool(re.match(pattern, vat_id.replace(' ', '')))
+
+
 @dataclass
 class ValidationError:
     """Repräsentiert einen Validierungsfehler"""

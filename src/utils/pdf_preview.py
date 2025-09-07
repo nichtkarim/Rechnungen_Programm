@@ -17,9 +17,10 @@ from src.utils.pdf_generator import InvoicePDFGenerator
 class PDFPreviewManager:
     """Verwaltet PDF-Vorschau und erweiterte Export-Optionen"""
     
-    def __init__(self, company_data: CompanyData, pdf_color: str = "#2E86AB"):
+    def __init__(self, company_data: CompanyData, pdf_color: str = "#2E86AB", enable_qr_codes: bool = True):
         self.company_data = company_data
         self.pdf_color = pdf_color
+        self.enable_qr_codes = enable_qr_codes
         self.temp_dir = Path(tempfile.gettempdir()) / "rechnungs_tool_previews"
         self.temp_dir.mkdir(exist_ok=True)
     
@@ -32,7 +33,11 @@ class PDFPreviewManager:
             preview_path = self.temp_dir / preview_filename
             
             # PDF generieren
-            pdf_generator = InvoicePDFGenerator(self.company_data, self.pdf_color)
+            pdf_generator = InvoicePDFGenerator(
+                self.company_data, 
+                self.pdf_color,
+                self.enable_qr_codes
+            )
             
             if pdf_generator.generate_pdf(invoice, str(preview_path)):
                 return preview_path
@@ -93,9 +98,10 @@ class PDFPreviewManager:
 class BulkExportManager:
     """Verwaltet Massen-Export von Dokumenten"""
     
-    def __init__(self, company_data: CompanyData, pdf_color: str = "#2E86AB"):
+    def __init__(self, company_data: CompanyData, pdf_color: str = "#2E86AB", enable_qr_codes: bool = True):
         self.company_data = company_data
         self.pdf_color = pdf_color
+        self.enable_qr_codes = enable_qr_codes
     
     def export_multiple_invoices(self, invoices: list, output_dir: Path, 
                                 naming_pattern: str = "{document_type}_{invoice_number}") -> Dict[str, Any]:
@@ -110,7 +116,11 @@ class BulkExportManager:
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         
-        pdf_generator = InvoicePDFGenerator(self.company_data, self.pdf_color)
+        pdf_generator = InvoicePDFGenerator(
+            self.company_data, 
+            self.pdf_color,
+            self.enable_qr_codes
+        )
         
         for invoice in invoices:
             try:
