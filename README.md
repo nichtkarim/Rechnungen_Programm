@@ -6,7 +6,42 @@ Ein umfassendes, deutsches Rechnungs- und Dokumenten-Management-Tool mit moderne
 ![CustomTkinter](https://img.shields.io/badge/GUI-CustomTkinter-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
+## 📝 **Changelog**
+
+### v2.1.0 (9. September 2025)
+**� NEU: Live-Update-System:**
+- **NEU**: Automatische Update-Prüfung alle 30 Minuten via GitHub
+- **NEU**: Intelligente Update-Logik (optional 7 Tage, dann verpflichtend)
+- **NEU**: Benutzerfreundliche Update-Banner für optionale Updates
+- **NEU**: Erzwungene Update-Dialoge nach Ablauf der Schonfrist
+- **NEU**: GitHub-Integration mit direkten Links zu Releases
+
+**�🔧 Kritische Fehlerbehebungen:**
+- **BEHOBEN**: Kunde bearbeiten führte zu "Kunde nicht gefunden" Fehler
+- **BEHOBEN**: Kunden konnten nicht gelöscht werden trotz Bestätigung
+- **BEHOBEN**: Rechnungen konnten nicht gelöscht werden
+- **BEHOBEN**: Anwendungseinstellungen wurden nicht persistiert
+- **VERBESSERT**: QR-Code ohne störende Beschreibung für saubere PDFs
+- **VERBESSERT**: Robuste ID-Verwaltung in TreeView-Komponenten
+- **VERBESSERT**: Bessere Fehlerbehandlung bei Löschoperationen
+
+**� Technische Verbesserungen:**
+- TreeView-Integration mit versteckten ID-Spalten
+- Zuverlässige Referenzierung über eindeutige IDs statt Namen/Nummern
+- Verbesserte Datenintegrität und Konsistenz
+- Optimierte GUI-Performance bei großen Datenmengen
+
+---
+
 ## 🌟 **Neue Features (v2.0)**
+
+### 🔧 **Kürzlich behobene Probleme**
+- ✅ **Kunde bearbeiten funktioniert wieder** - ID-basierte Referenzierung korrigiert
+- ✅ **Kunden löschen funktioniert wieder** - Robuste Löschlogik implementiert
+- ✅ **Rechnungen löschen funktioniert wieder** - Sichere Dokumentenlöschung
+- ✅ **QR-Code Beschreibung entfernt** - Sauberes PDF-Layout ohne störenden Text
+- ✅ **Anwendungseinstellungen werden gespeichert** - Persistente Konfiguration
+- ✅ **Verbesserte Datenintegrität** - Robuste ID-Verwaltung in TreeViews
 
 ### 🔒 **Automatische Backup-Funktionen**
 - Tägliche, wöchentliche und monatliche Backups
@@ -81,6 +116,13 @@ Ein umfassendes, deutsches Rechnungs- und Dokumenten-Management-Tool mit moderne
 - Automatische Backups mit Retention-Policy
 - Datenvalidierung und Integritätsprüfung
 - Export/Import für Datenmigration
+
+### 🚀 **Live-Update-System**
+- Automatische Update-Prüfung über GitHub
+- Optionale Updates mit 7-Tage-Schonfrist
+- Erzwungene Updates nach Ablauf
+- Sichere Versionsprüfung und -validierung
+- Benutzerfreundliche Update-Benachrichtigungen
 
 ## 🚀 **Installation & Einrichtung**
 
@@ -252,7 +294,21 @@ class DocumentType(Enum):
 
 ## 🐛 **Troubleshooting**
 
-### Häufige Probleme
+### Häufige Probleme (v2.1.0 behoben)
+
+**✅ "Kunde nicht gefunden" beim Bearbeiten:**
+- **Problem**: TreeView verwendete Kundennummer statt eindeutige ID
+- **Lösung**: Automatisch in v2.1.0 behoben - versteckte ID-Spalten implementiert
+
+**✅ Kunden/Rechnungen lassen sich nicht löschen:**
+- **Problem**: Inkonsistente ID-Referenzierung in Delete-Operationen  
+- **Lösung**: Robuste ID-basierte Löschlogik mit Fehlerbehandlung
+
+**✅ Einstellungen werden nicht gespeichert:**
+- **Problem**: AppSettingsWindow wartete nicht auf Fenster-Schließung
+- **Lösung**: `wait_window()` korrekt implementiert für persistente Einstellungen
+
+### Aktuelle bekannte Probleme
 
 **Anwendung startet nicht:**
 ```bash
@@ -304,19 +360,23 @@ python main.py
 
 ## 📈 **Roadmap & Geplante Features**
 
-### Version 2.1 (Q1 2025)
+### Version 2.2 (Aktuell in Entwicklung)
+- [x] Behebung der Kunden-/Dokumentenverwaltung 
+- [x] Verbesserte TreeView-Integration mit ID-Management
+- [x] Saubere PDF-Layouts ohne störende QR-Code-Texte
+- [x] Persistente Anwendungseinstellungen
 - [ ] Datenbankanbindung (SQLite/PostgreSQL)
 - [ ] Multi-Mandanten-Fähigkeit
 - [ ] E-Mail-Integration für Rechnungsversand
-- [ ] Mahnsystem mit automatischen Erinnerungen
 
-### Version 2.2 (Q2 2025)
+### Version 2.3 (Q1 2025)
+- [ ] Mahnsystem mit automatischen Erinnerungen
 - [ ] Web-Interface für mobile Zugriffe
 - [ ] REST-API für Drittanbieter-Integration
 - [ ] Erweiterte Berichtsfunktionen
 - [ ] Buchhaltungs-Export (DATEV, CSV)
 
-### Version 2.3 (Q3 2025)
+### Version 2.4 (Q2 2025)
 - [ ] Lagerverwaltung und Produktkatalog
 - [ ] Angebots-Nachverfolgung
 - [ ] Kundenkommunikation-Historie

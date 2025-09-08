@@ -37,6 +37,9 @@ class AppSettingsWindow:
         
         # Zentrierung
         self.center_window()
+        
+        # Warten auf Schließung
+        self.window.wait_window()
     
     def setup_gui(self):
         """Erstellt die GUI-Elemente"""

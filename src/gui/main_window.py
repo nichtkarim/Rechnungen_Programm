@@ -51,7 +51,7 @@ class MainWindow:
         
         # Hauptfenster erstellen
         self.root = ctk.CTk()
-        self.root.title("Rechnungs-Tool - Enterprise Edition")
+        self.root.title("Rechnungs-Tool - Enterprise Edition v2.1")
         
         # Fenstereinstellungen
         settings = self.data_manager.get_settings()
@@ -413,7 +413,7 @@ class MainWindow:
         cust_list_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
         
         # Treeview für Kunden
-        cust_columns = ("Nummer", "Firma", "Kontakt", "Ort", "E-Mail", "Telefon")
+        cust_columns = ("Nummer", "Firma", "Kontakt", "Ort", "E-Mail", "Telefon", "ID")
         self.customers_tree = ttk.Treeview(cust_list_frame, columns=cust_columns, show="headings", height=15)
         
         # Spalten konfigurieren
@@ -423,6 +423,10 @@ class MainWindow:
         self.customers_tree.heading("Ort", text="Ort")
         self.customers_tree.heading("E-Mail", text="E-Mail")
         self.customers_tree.heading("Telefon", text="Telefon")
+        
+        # ID-Spalte verstecken
+        self.customers_tree.column("ID", width=0, stretch=False)
+        self.customers_tree.heading("ID", text="")
         
         self.customers_tree.column("Nummer", width=100)
         self.customers_tree.column("Firma", width=200)
@@ -536,16 +540,14 @@ class MainWindow:
             return
         
         item = self.customers_tree.item(selection[0])
-        customer_number = item['values'][0]
+        # Verwende die ID aus der versteckten letzten Spalte
+        customer_id = item['values'][6]  # ID ist jetzt in Spalte 6 (Index 6)
         
-        # Kunde anhand der Nummer finden
-        customers = self.data_manager.get_customers()
-        customer = None
-        for cust in customers:
-            if cust.customer_number == customer_number:
-                customer = cust
-                break
-        
+        if not customer_id:
+            messagebox.showerror("Fehler", "Kunde nicht gefunden.")
+            return
+            
+        customer = self.data_manager.get_customer_by_id(customer_id)
         if not customer:
             messagebox.showerror("Fehler", "Kunde nicht gefunden.")
             return
@@ -569,20 +571,25 @@ class MainWindow:
             return
         
         item = self.documents_tree.item(selection[0])
-        invoice_number = item['values'][1]
-        doc_type = item['values'][0]
+        invoice_number = item['values'][2]  # Nummer ist jetzt in Spalte 2
+        doc_type = item['values'][1]  # Typ ist jetzt in Spalte 1
+        
+        # Invoice ID aus der versteckten ersten Spalte
+        invoice_id = item['values'][0]  # ID ist in Spalte 0
+        
+        if not invoice_id:
+            messagebox.showerror("Fehler", "Dokument nicht gefunden.")
+            return
         
         if messagebox.askyesno("Löschen bestätigen", f"Möchten Sie das {doc_type} {invoice_number} wirklich löschen?"):
-            # Dokument finden und löschen
-            invoices = self.data_manager.get_invoices()
-            for invoice in invoices:
-                if invoice.invoice_number == invoice_number:
-                    self.data_manager.delete_invoice(invoice.id)
-                    break
-            
-            self.refresh_documents_list()
-            self.update_status_statistics()
-            self.set_status("Dokument gelöscht.")
+            try:
+                self.data_manager.delete_invoice(invoice_id)
+                self.refresh_documents_list()
+                self.update_status_statistics()
+                self.set_status("Dokument gelöscht.")
+            except Exception as e:
+                messagebox.showerror("Fehler", f"Fehler beim Löschen: {str(e)}")
+                print(f"Fehler beim Löschen des Dokuments: {e}")
     
     def delete_selected_customer(self):
         """Löscht den ausgewählten Kunden"""
@@ -595,17 +602,22 @@ class MainWindow:
         customer_number = item['values'][0]
         customer_name = item['values'][1] or item['values'][2]
         
+        # Verwende die ID aus der versteckten letzten Spalte
+        customer_id = item['values'][6]  # ID ist jetzt in Spalte 6 (Index 6)
+        
+        if not customer_id:
+            messagebox.showerror("Fehler", "Kunde nicht gefunden.")
+            return
+        
         if messagebox.askyesno("Löschen bestätigen", f"Möchten Sie den Kunden {customer_name} ({customer_number}) wirklich löschen?"):
-            # Kunde finden und löschen
-            customers = self.data_manager.get_customers()
-            for customer in customers:
-                if customer.customer_number == customer_number:
-                    self.data_manager.delete_customer(customer.id)
-                    break
-            
-            self.refresh_customers_list()
-            self.update_status_statistics()
-            self.set_status("Kunde gelöscht.")
+            try:
+                self.data_manager.delete_customer(customer_id)
+                self.refresh_customers_list()
+                self.update_status_statistics()
+                self.set_status("Kunde gelöscht.")
+            except Exception as e:
+                messagebox.showerror("Fehler", f"Fehler beim Löschen: {str(e)}")
+                print(f"Fehler beim Löschen des Kunden: {e}")
     
     def export_selected_document(self):
         """Exportiert das ausgewählte Dokument als PDF"""
@@ -1512,39 +1524,49 @@ class MainWindow:
             ).pack(pady=(0, 20))
             
             # Bericht-Sections
-            for section, data in report.items():
-                section_frame = ctk.CTkFrame(scroll_frame)
-                section_frame.pack(fill="x", pady=10)
-                
-                ctk.CTkLabel(
-                    section_frame,
-                    text=section.replace("_", " ").title(),
-                    font=ctk.CTkFont(size=14, weight="bold")
-                ).pack(anchor="w", padx=10, pady=10)
-                
-                if isinstance(data, dict):
-                    for key, value in data.items():
-                        detail_frame = ctk.CTkFrame(section_frame)
-                        detail_frame.pack(fill="x", padx=10, pady=2)
-                        
-                        ctk.CTkLabel(
-                            detail_frame,
-                            text=f"• {key}: {value}",
-                            font=ctk.CTkFont(size=11)
-                        ).pack(anchor="w", padx=10, pady=5)
-                elif isinstance(data, list):
-                    for item in data:
-                        ctk.CTkLabel(
-                            section_frame,
-                            text=f"• {item}",
-                            font=ctk.CTkFont(size=11)
-                        ).pack(anchor="w", padx=20, pady=2)
-                else:
+            if isinstance(report, dict):
+                for section, data in report.items():
+                    section_frame = ctk.CTkFrame(scroll_frame)
+                    section_frame.pack(fill="x", pady=10)
+                    
                     ctk.CTkLabel(
                         section_frame,
-                        text=str(data),
-                        font=ctk.CTkFont(size=11)
-                    ).pack(anchor="w", padx=20, pady=5)
+                        text=section.replace("_", " ").title(),
+                        font=ctk.CTkFont(size=14, weight="bold")
+                    ).pack(anchor="w", padx=10, pady=10)
+                    
+                    if isinstance(data, dict):
+                        for key, value in data.items():
+                            detail_frame = ctk.CTkFrame(section_frame)
+                            detail_frame.pack(fill="x", padx=10, pady=2)
+                            
+                            ctk.CTkLabel(
+                                detail_frame,
+                                text=f"• {key}: {value}",
+                                font=ctk.CTkFont(size=11)
+                            ).pack(anchor="w", padx=10, pady=5)
+                    elif isinstance(data, list):
+                        for item in data:
+                            ctk.CTkLabel(
+                                section_frame,
+                                text=f"• {item}",
+                                font=ctk.CTkFont(size=11)
+                            ).pack(anchor="w", padx=20, pady=2)
+                    else:
+                        ctk.CTkLabel(
+                            section_frame,
+                            text=str(data),
+                            font=ctk.CTkFont(size=11)
+                        ).pack(anchor="w", padx=20, pady=5)
+            else:
+                # Falls report kein dict ist (z.B. str), einfach als Text anzeigen
+                section_frame = ctk.CTkFrame(scroll_frame)
+                section_frame.pack(fill="x", pady=10)
+                ctk.CTkLabel(
+                    section_frame,
+                    text=str(report),
+                    font=ctk.CTkFont(size=12)
+                ).pack(anchor="w", padx=10, pady=10)
             
             ctk.CTkButton(
                 report_window,
@@ -1758,6 +1780,12 @@ Verwaltung von Rechnungen, Angeboten und Gutschriften.
 ✅ Interaktive Charts und Grafiken
 ✅ PDF-Live-Vorschau
 
+🚀 UPDATE-SYSTEM:
+✅ Automatische Update-Prüfung
+✅ GitHub-basierte Live-Updates
+✅ Optionale Updates mit 7-Tage-Frist
+✅ Erzwungene Updates nach Ablauf
+
 Entwickelt für kleine bis große Unternehmen.
 © 2025 - Professional Business Solutions
         """
@@ -1840,6 +1868,13 @@ Entwickelt für kleine bis große Unternehmen.
                 "Interaktive Charts und Grafiken",
                 "PDF-Live-Vorschau",
                 "Touch-optimierte Bedienung"
+            ]),
+            ("🚀 UPDATE-SYSTEM", [
+                "Automatische Update-Prüfung",
+                "GitHub-basierte Live-Updates",
+                "Optionale Updates mit 7-Tage-Frist",
+                "Erzwungene Updates nach Ablauf",
+                "Sichere Versionsprüfung"
             ])
         ]
         
@@ -1991,7 +2026,8 @@ Entwickelt für kleine bis große Unternehmen.
                 customer.contact_person,
                 customer.city,
                 customer.email,
-                customer.phone
+                customer.phone,
+                customer.id  # ID als versteckte letzte Spalte hinzufügen
             ))
         
         self.filter_customers()
@@ -2040,6 +2076,86 @@ Offene Rechnungen: {stats['unpaid_invoices']} ({stats['unpaid_amount']:,.2f} €
         """Setzt die Statusnachricht"""
         self.status_label.configure(text=message)
         self.root.update()
+    
+    # Update-System Methoden
+    def show_update_banner(self, message: str, update_result):
+        """Zeigt Update-Banner (nicht-blockierend)"""
+        try:
+            import webbrowser
+            
+            # Update-Banner Frame erstellen (falls noch nicht vorhanden)
+            if not hasattr(self, 'update_banner'):
+                self.update_banner = ctk.CTkFrame(self.root, height=50)
+                self.update_banner.pack_propagate(False)
+                
+                # Banner-Layout
+                banner_left = ctk.CTkFrame(self.update_banner, fg_color="transparent")
+                banner_left.pack(side="left", fill="both", expand=True, padx=10, pady=5)
+                
+                self.update_message_label = ctk.CTkLabel(
+                    banner_left, 
+                    text="", 
+                    font=("Arial", 12, "bold"),
+                    text_color=("orange", "yellow")
+                )
+                self.update_message_label.pack(side="left", pady=10)
+                
+                banner_right = ctk.CTkFrame(self.update_banner, fg_color="transparent")
+                banner_right.pack(side="right", padx=10, pady=5)
+                
+                self.update_github_btn = ctk.CTkButton(
+                    banner_right,
+                    text="📥 GitHub öffnen",
+                    width=120,
+                    command=lambda: webbrowser.open("https://github.com/nichtkarim/Rechnungen_Programm/releases")
+                )
+                self.update_github_btn.pack(side="right", padx=2)
+                
+                self.update_later_btn = ctk.CTkButton(
+                    banner_right,
+                    text="⏰ Später",
+                    width=80,
+                    command=self.hide_update_banner
+                )
+                self.update_later_btn.pack(side="right", padx=2)
+            
+            # Message aktualisieren und Banner anzeigen
+            self.update_message_label.configure(text=f"🚀 {message}")
+            self.update_banner.pack(side="top", fill="x", padx=5, pady=2, after=self.menubar)
+            
+            print(f"✅ Update-Banner angezeigt: {message}")
+        except Exception as e:
+            print(f"❌ Fehler beim Anzeigen des Update-Banners: {e}")
+    
+    def hide_update_banner(self):
+        """Versteckt das Update-Banner"""
+        if hasattr(self, 'update_banner'):
+            self.update_banner.pack_forget()
+    
+    def show_forced_update_dialog(self, message: str, update_result):
+        """Zeigt erzwungenen Update-Dialog (blockierend)"""
+        try:
+            import webbrowser
+            from tkinter import messagebox
+            
+            result = messagebox.askquestion(
+                "Update erforderlich",
+                f"{message}\n\nDie Anwendung muss aktualisiert werden.\n\nJetzt GitHub öffnen?",
+                icon="warning"
+            )
+            
+            if result == "yes":
+                webbrowser.open("https://github.com/nichtkarim/Rechnungen_Programm/releases")
+            
+            # Nach Dialog-Schließung: Anwendung beenden
+            messagebox.showinfo(
+                "Update erforderlich",
+                "Bitte laden Sie die neue Version herunter und starten Sie die Anwendung neu.\n\nDie Anwendung wird jetzt beendet."
+            )
+            self.root.quit()
+            
+        except Exception as e:
+            print(f"❌ Fehler beim Anzeigen des Update-Dialogs: {e}")
     
     def on_closing(self):
         """Behandelt das Schließen der Anwendung"""

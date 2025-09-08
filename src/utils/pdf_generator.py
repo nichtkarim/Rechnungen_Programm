@@ -572,14 +572,8 @@ class InvoicePDFGenerator:
             bank_paragraph = Paragraph(bank_info, self.styles['Normal'])
             
             if qr_code:
-                # QR-Code-Beschreibung
-                qr_description = Paragraph(
-                    "<b>QR-Code scannen für Überweisung:</b><br/>"
-                    "Mit Ihrer Banking-App scannen für<br/>"
-                    "automatische Überweisung mit allen<br/>"
-                    "Daten (Betrag, IBAN, Verwendungszweck)",
-                    self.styles['SmallText']
-                )
+                # QR-Code ohne Beschreibung
+                qr_description = Paragraph("", self.styles['SmallText'])
                 
                 # Tabelle mit Bankdaten und QR-Code
                 payment_data = [
