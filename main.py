@@ -17,7 +17,7 @@ from src.gui.main_window import MainWindow
 # Neu: einfacher Update-Checker
 from src.core.simple_update import async_check, schedule_periodic, UpdateResult
 
-AKTUELLE_VERSION = "2.1.0"  # Bei Release erhöhen
+AKTUELLE_VERSION = "2.1.1"  # Bei Release erhöhen
 
 
 def main():

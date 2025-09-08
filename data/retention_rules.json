@@ -10,8 +10,8 @@
       "Rechtliche Streitigkeiten",
       "Steuerprüfung"
     ],
-    "created_at": "2025-09-08T03:04:15.419948",
-    "updated_at": "2025-09-08T03:04:15.419950"
+    "created_at": "2025-09-08T03:29:49.147555",
+    "updated_at": "2025-09-08T03:29:49.147557"
   },
   "d9ec6fc629f728e7": {
     "regulation": "GoBD",
@@ -24,8 +24,8 @@
       "Laufende Verfahren",
       "Betriebsprüfung"
     ],
-    "created_at": "2025-09-08T03:04:15.419957",
-    "updated_at": "2025-09-08T03:04:15.419958"
+    "created_at": "2025-09-08T03:29:49.147563",
+    "updated_at": "2025-09-08T03:29:49.147564"
   },
   "50ab9caba11e2668": {
     "regulation": "GoBD",
@@ -37,8 +37,8 @@
     "exceptions": [
       "Handelsrechtliche Aufbewahrung"
     ],
-    "created_at": "2025-09-08T03:04:15.419961",
-    "updated_at": "2025-09-08T03:04:15.419961"
+    "created_at": "2025-09-08T03:29:49.147567",
+    "updated_at": "2025-09-08T03:29:49.147567"
   },
   "c50a124c0b29417a": {
     "regulation": "HGB",
@@ -50,8 +50,8 @@
     "exceptions": [
       "Laufende Geschäfte"
     ],
-    "created_at": "2025-09-08T03:04:15.419964",
-    "updated_at": "2025-09-08T03:04:15.419964"
+    "created_at": "2025-09-08T03:29:49.147570",
+    "updated_at": "2025-09-08T03:29:49.147570"
   },
   "a03063dd3a7b0893": {
     "regulation": "DSGVO",
@@ -63,8 +63,8 @@
     "exceptions": [
       "Rechtliche Dokumentation"
     ],
-    "created_at": "2025-09-08T03:04:15.419967",
-    "updated_at": "2025-09-08T03:04:15.419967"
+    "created_at": "2025-09-08T03:29:49.147573",
+    "updated_at": "2025-09-08T03:29:49.147573"
   },
   "af02ab6758608348": {
     "regulation": "DSGVO",
@@ -77,7 +77,7 @@
       "Sicherheitsvorfälle",
       "Forensik"
     ],
-    "created_at": "2025-09-08T03:04:15.419969",
-    "updated_at": "2025-09-08T03:04:15.419970"
+    "created_at": "2025-09-08T03:29:49.147575",
+    "updated_at": "2025-09-08T03:29:49.147576"
   }
 }
