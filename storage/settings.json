@@ -1,7 +1,7 @@
 {
   "theme_mode": "system",
-  "window_width": 1699,
-  "window_height": 900,
+  "window_width": 1329,
+  "window_height": 662,
   "invoice_number_format": "R{year}-{counter:04d}",
   "offer_number_format": "A{year}-{counter:04d}",
   "credit_note_format": "G{year}-{counter:04d}",
